@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  etekaf-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: etekaf-assistant
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # متغیرهای محیطی - مقادیر را با اطلاعات واقعی خود جایگزین کنید
+      - API_KEY=${API_KEY:-morabbiyane_eetekafe_nojavan}
+      - BASE_URL=${BASE_URL:-https://selfclaude.flearning.ir/}
+      - API_ENDPOINT=${API_ENDPOINT:-chat/completions}
+      - PORT=${PORT:-3000}
+      - HOST=${HOST:-0.0.0.0}
+    # استفاده از فایل .env (اختیاری)
+    env_file:
+      - .env
+    # برای نگهداری لاگ‌ها
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # سلامت سرویس (healthcheck) - اختیاری
+    # اگر wget یا curl نصب نیست، این بخش را حذف کنید
+    # healthcheck:
+    #   test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})\""]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
+    #   start_period: 40s
+

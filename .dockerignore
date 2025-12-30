@@ -1,0 +1,43 @@
+# فایل‌های Git
+.git
+.gitignore
+.gitattributes
+
+# فایل‌های Node.js
+node_modules
+npm-debug.log
+yarn-error.log
+
+# فایل‌های محیطی و تنظیمات
+.env
+.env.local
+.env.*.local
+config.js
+
+# فایل‌های مستندات
+README.md
+SETUP_GUIDE.md
+QUICK_START.md
+DEPLOYMENT.md
+*.md
+
+# فایل‌های IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# فایل‌های سیستم عامل
+.DS_Store
+Thumbs.db
+
+# فایل‌های Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# فایل‌های لاگ
+*.log
+logs
+
