@@ -1,0 +1,10 @@
+// فایل تنظیمات API
+// این فایل را کپی کنید و نام آن را config.js بگذارید
+// یا از اسکریپت build-config.js استفاده کنید
+
+window.APP_CONFIG = {
+    apiKey: "morabbiyane_eetekafe_nojavan",
+    baseUrl: "https://selfclaude.flearning.ir/",
+    apiEndpoint: "chat/completions" // endpoint API (ممکن است متفاوت باشد)
+};
+

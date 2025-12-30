@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>دستیار هوشمند خادمان اعتکاف</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap" rel="stylesheet">
+    <!-- فایل تنظیمات API - باید از build-config.js تولید شود -->
+    <script src="config.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#0891b2', // فیروزه‌ای خاص (Cyan-600)
+                        'primary-hover': '#0e7490',
+                        'soft-bg': '#f0f9ff',
+                    },
+                    borderRadius: {
+                        'gg': '1.5rem', // Googooli Radius
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+            background-color: #f8fafc;
+            -webkit-tap-highlight-color: transparent;
+            padding-bottom: 90px;
+            color: #334155;
+        }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .timeline-container { position: relative; padding-right: 24px; }
+        .timeline-line { position: absolute; top: 16px; bottom: 0; right: 10px; width: 2px; background-color: #e2e8f0; z-index: 0; }
+        .timeline-item { position: relative; margin-bottom: 24px; }
+        .timeline-dot { width: 12px; height: 12px; background: #fff; border: 3px solid #94a3b8; border-radius: 50%; position: absolute; right: -20px; top: 8px; z-index: 1; transition: all 0.2s; }
+        .timeline-dot.ai { border-color: #f59e0b; background: #fef3c7; }
+        .timeline-dot.user { border-color: #0891b2; background: #cffafe; }
+
+        .protocol-card { border-right: 4px solid; background: #fff; margin-bottom: 1rem; border-radius: 1.25rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03); overflow: hidden; }
+        
+        .loader { width: 18px; height: 18px; border: 2px solid #fff; border-bottom-color: transparent; border-radius: 50%; display: inline-block; box-sizing: border-box; animation: rotation 1s linear infinite; }
+        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        input[type="time"]::-webkit-calendar-picker-indicator { display: none; }
+        .persian-num { font-feature-settings: "ss01"; }
+        
+        /* Micro-animation for clicks */
+        .btn-press:active { transform: scale(0.92); transition: transform 0.1s; }
+    </style>
+</head>
+<body class="bg-soft-bg min-h-screen selection:bg-cyan-100">
+
+    <!-- Header -->
+    <header class="bg-white/80 backdrop-blur-lg sticky top-0 z-30 border-b border-cyan-100">
+        <div class="max-w-md mx-auto px-5 h-16 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-primary text-white p-2.5 rounded-2xl shadow-lg shadow-cyan-100">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                </div>
+                <div>
+                    <h1 class="font-black text-slate-700 text-lg tracking-tight">یاور مربی</h1>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                        <span class="text-[11px] text-slate-400 font-bold">اعتکاف یاران موعود</span>
+                    </div>
+                </div>
+            </div>
+            <button onclick="openSettingsModal()" class="btn-press p-3 text-slate-400 hover:text-primary transition-colors rounded-full hover:bg-cyan-50" title="جعبه ابزار خادم">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main id="app-container" class="max-w-md mx-auto w-full p-5 relative min-h-[calc(100vh-140px)]"></main>
+
+    <!-- Bottom Nav -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 shadow-[0_-5px_20px_-5px_rgba(0,0,0,0.05)] z-40 rounded-t-3xl">
+        <div class="max-w-md mx-auto grid grid-cols-3 h-20 items-center pb-2">
+            <button onclick="router('home')" id="nav-home" class="nav-item btn-press flex flex-col items-center justify-center gap-1.5 text-slate-800">
+                <div class="p-1 rounded-xl transition-colors">
+                    <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                </div>
+                <span class="text-[11px] font-bold">سنگر فرهنگی</span>
+            </button>
+            <button onclick="router('schedule')" id="nav-schedule" class="nav-item btn-press flex flex-col items-center justify-center gap-1.5 text-slate-400">
+                <div class="p-1 rounded-xl transition-colors">
+                    <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </div>
+                <span class="text-[11px] font-bold">نظم و جهاد</span>
+            </button>
+            <button onclick="router('profiles')" id="nav-profiles" class="nav-item btn-press flex flex-col items-center justify-center gap-1.5 text-slate-400">
+                <div class="p-1 rounded-xl transition-colors">
+                    <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                </div>
+                <span class="text-[11px] font-bold">پرونده‌ها</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- General Modal (Click outside to close) -->
+    <div id="modal-overlay" onclick="if(event.target === this) closeModal()" class="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-50 hidden flex items-center justify-center transition-all duration-300 px-4 pb-4 sm:pb-0">
+        <div id="modal-card" class="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl transform scale-95 opacity-0 transition-all duration-300 max-h-[85vh] flex flex-col relative overflow-hidden">
+            <!-- Modal content -->
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-24 left-1/2 -translate-x-1/2 bg-slate-800/90 backdrop-blur-md text-white px-6 py-3.5 rounded-2xl shadow-xl text-sm font-medium z-[60] flex items-center gap-3 opacity-0 pointer-events-none transition-all duration-300 scale-90 border border-slate-700/50">
+        <span class="text-xl">🕊️</span>
+        <span id="toast-msg">پیام سیستم</span>
+    </div>
+
+    <script>
+        // --- CONFIG ---
+        // تنظیمات از فایل config.js خوانده می‌شود
+        const config = window.APP_CONFIG || {
+            apiKey: "",
+            baseUrl: "https://selfclaude.flearning.ir/",
+            apiEndpoint: "chat/completions"
+        };
+        
+        const apiKey = config.apiKey;
+        const baseUrl = config.baseUrl;
+        const apiEndpoint = config.apiEndpoint;
+
+        // --- SAFE API CALLER ---
+        async function callGemini(userPrompt, systemInstruction) {
+            if (!apiKey) {
+                console.warn("API key not configured.");
+                await new Promise(r => setTimeout(r, 600));
+                return JSON.stringify({
+                    diagnosis: "حالت تمرینی: عدم دسترسی به شبکه",
+                    action: "اتصال اینترنت یا کلید API را بررسی کنید.",
+                    ammo: "حدیث: انتظار فرج، افضل اعمال است.",
+                    targeting: "همه یاران را فراخوان کنید.",
+                    sentiment: "نامشخص",
+                    advice: "سیستم آفلاین است."
+                });
+            }
+
+            // ساخت URL کامل
+            const url = `${baseUrl}${apiEndpoint}`.replace(/\/+/g, '/').replace(/^https?:\//, 'https://');
+            
+            // فرمت درخواست برای API جدید (مشابه Claude/ChatGPT)
+            const payload = {
+                messages: [
+                    { role: "system", content: systemInstruction },
+                    { role: "user", content: userPrompt }
+                ]
+            };
+
+            const delays = [1000, 2000, 4000];
+            for (let i = 0; i <= delays.length; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                            // اگر بک‌اند از header دیگری استفاده می‌کند، اینجا تغییر دهید
+                            // مثلاً: 'api-key': apiKey یا 'X-API-Key': apiKey
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error('API Error:', response.status, errorText);
+                        throw new Error(`HTTP Error: ${response.status} - ${errorText}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // تلاش برای خواندن پاسخ در فرمت‌های مختلف
+                    const responseText = data.choices?.[0]?.message?.content || 
+                                       data.content || 
+                                       data.response || 
+                                       data.message || 
+                                       data.text ||
+                                       (data.choices && data.choices[0]?.text) ||
+                                       JSON.stringify(data);
+                    
+                    return responseText;
+                } catch (error) {
+                    if (i === delays.length) {
+                        console.error("API Failure:", error);
+                        throw error;
+                    }
+                    await new Promise(r => setTimeout(r, delays[i]));
+                }
+            }
+        }
+
+        // --- DEFAULT DATA ---
+        const DEFAULT_PROMPTS = {
+            mentorProtocol: `شما "دستیار هوشمند خادمان اعتکاف" هستید. ادبیات شما باید بسیار صمیمی، جهادی و معنوی باشد.
+خروجی شما باید دقیقاً یک JSON معتبر با فیلدهای diagnosis, action, ammo, targeting باشد.
+فقط JSON برگردان، بدون Markdown.`,
+            profileAnalysis: `شما "مشاور تربیتی" در فضای اعتکاف هستید. لحن دلسوزانه و مربی‌گونه. خروجی JSON با فیلدهای sentiment و advice.
+فقط JSON برگردان، بدون Markdown.`
+        };
+
+        const DEFAULT_SCHEDULE = [
+            { id: 1, time: "03:30", title: "مناجات با قاضی‌الحاجات (سحر)" },
+            { id: 2, time: "04:15", title: "رزق سحری" },
+            { id: 3, time: "05:25", title: "نماز صبح (جماعت)" },
+            { id: 4, time: "06:00", title: "عهد با امام زمان (عج)" },
+            { id: 5, time: "10:30", title: "حلقه معرفت: رفاقت با خدا" },
+            { id: 6, time: "12:15", title: "نماز جماعت ظهر و عصر" },
+            { id: 7, time: "13:30", title: "خواب قیلوله (تجدید قوا)" },
+            { id: 8, time: "16:00", title: "گعده صمیمانه عصر" },
+            { id: 9, time: "17:30", title: "خلوت با قرآن" },
+            { id: 10, time: "18:20", title: "نماز مغرب و عشاء" },
+            { id: 11, time: "19:00", title: "سفره افطار" },
+            { id: 12, time: "21:00", title: "هیئت و توسل" },
+            { id: 13, time: "23:00", title: "خاموشی و استراحت" }
+        ];
+
+        const DEFAULT_PROFILES = [
+            {
+                name: "محمدحسین", age: 14,
+                logs: [
+                    { time: "04:30", note: "در حال گریه و توسل بود، حال معنوی خوبی داشت.", type: 'user' },
+                    { time: "11:00", note: "کمی کسل شده و در حلقه شرکت نمی‌کند.", type: 'user' }
+                ]
+            }
+        ];
+
+        // --- STATE ---
+        let state = {
+            prompts: JSON.parse(localStorage.getItem('prompts')) || DEFAULT_PROMPTS,
+            schedule: JSON.parse(localStorage.getItem('schedule')) || DEFAULT_SCHEDULE,
+            profiles: JSON.parse(localStorage.getItem('profiles')) || DEFAULT_PROFILES
+        };
+        let confirmCallback = null; 
+
+        function saveData() {
+            localStorage.setItem('prompts', JSON.stringify(state.prompts));
+            localStorage.setItem('schedule', JSON.stringify(state.schedule));
+            localStorage.setItem('profiles', JSON.stringify(state.profiles));
+        }
+
+        function toPersianDigits(input) {
+            const str = String(input || '');
+            return str.replace(/[0-9]/g, c => String.fromCharCode(c.charCodeAt(0) + 1728));
+        }
+
+        function timeToMinutes(t) {
+            if (!t) return 0;
+            const [h, m] = String(t).split(':').map(x => parseInt(x, 10) || 0);
+            return h * 60 + m;
+        }
+
+        function router(route) {
+            window.scrollTo(0,0);
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.className = "nav-item btn-press flex flex-col items-center justify-center gap-1.5 text-slate-400 transition-colors";
+            });
+            const navEl = document.getElementById(`nav-${route}`);
+            if (navEl) navEl.className = "nav-item btn-press flex flex-col items-center justify-center gap-1.5 text-primary transition-colors";
+
+            const app = document.getElementById('app-container');
+            app.innerHTML = '';
+
+            if (route === 'home') renderHome(app);
+            if (route === 'schedule') renderSchedule(app);
+            if (route === 'profiles') renderProfiles(app);
+        }
+
+        // --- CUSTOM CONFIRM MODAL LOGIC ---
+        function openConfirm(message, callback) {
+            confirmCallback = callback;
+            const content = `
+                <div class="flex flex-col h-full justify-center p-6 text-center">
+                    <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-rose-50 mb-6">
+                        <svg class="h-8 w-8 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl leading-6 font-black text-slate-800 mb-3">آیا مطمئنی رفیق؟</h3>
+                    <p class="text-sm text-slate-500 mb-8 leading-relaxed">${message}</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="executeConfirm()" class="btn-press w-full rounded-2xl border border-transparent shadow-lg shadow-rose-100 px-4 py-3.5 bg-rose-500 text-base font-bold text-white hover:bg-rose-600 focus:outline-none">
+                            بله، حذف کن
+                        </button>
+                        <button onclick="closeModal()" class="btn-press w-full rounded-2xl border border-slate-200 shadow-sm px-4 py-3.5 bg-white text-base font-bold text-slate-700 hover:bg-slate-50 focus:outline-none">
+                            نه، منصرف شدم
+                        </button>
+                    </div>
+                </div>
+            `;
+            showModal(content);
+        }
+
+        function executeConfirm() {
+            if (confirmCallback) confirmCallback();
+            confirmCallback = null;
+            closeModal();
+        }
+
+        // --- RENDER VIEWS ---
+        function renderHome(container) {
+            const currentEvent = getCurrentEvent();
+            container.innerHTML = `
+                <div class="fade-in space-y-5">
+                    <!-- Context Bar -->
+                    <div class="bg-white border border-slate-100 rounded-gg p-5 flex items-center justify-between shadow-sm relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-20 h-full bg-gradient-to-l from-cyan-50/50 to-transparent"></div>
+                        <div class="flex items-center gap-5 w-full relative z-10">
+                             <div class="flex flex-col items-center justify-center min-w-[80px]">
+                                <span class="text-3xl font-black text-primary font-[Vazirmatn] tracking-tight pt-1">${toPersianDigits(getCurrentTime())}</span>
+                                <span class="text-[10px] text-cyan-600 font-bold mt-0.5 opacity-80">به وقت عاشقی</span>
+                             </div>
+                             
+                             <div class="w-px h-10 bg-slate-100"></div>
+                             
+                             <div class="flex flex-col flex-grow items-start overflow-hidden">
+                                 <span class="text-[10px] text-slate-400 font-bold mb-1.5">هم‌اکنون در سنگر:</span>
+                                 <div class="flex items-center gap-2.5 w-full">
+                                    <span class="flex-shrink-0 w-2.5 h-2.5 bg-primary rounded-full animate-pulse shadow-[0_0_10px_rgba(8,145,178,0.4)]"></span>
+                                    <span class="text-sm font-bold text-slate-700 truncate w-full leading-tight">${currentEvent ? currentEvent.title : 'فرصت خلوت'}</span>
+                                 </div>
+                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Input Area -->
+                    <div class="bg-white p-6 rounded-gg shadow-sm border border-slate-100">
+                        <label class="block text-slate-800 font-black mb-4 flex items-center gap-2.5">
+                            <div class="bg-cyan-100 p-2 rounded-xl text-primary">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            </div>
+                            اتاق فکر جهادی
+                        </label>
+                        <p class="text-xs text-slate-500 mb-4 leading-relaxed bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                            سلام خادم عزیز؛ دغدغه‌ای برای یاران امام زمان داری؟ اینجا بنویس تا با هم حلش کنیم...
+                        </p>
+                        <textarea id="mentor-input" rows="3" class="w-full bg-white border border-slate-200 rounded-2xl p-4 text-slate-700 placeholder-slate-300 focus:ring-2 focus:ring-cyan-100 focus:border-primary transition-all resize-none text-sm leading-relaxed" placeholder="مثلاً: بچه‌ها در حلقه معرفت کمی خسته به نظر می‌رسند..."></textarea>
+                        
+                        <button onclick="generateProtocol()" class="btn-press mt-5 w-full bg-primary text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-primary-hover transition-all shadow-lg shadow-cyan-100">
+                            <span id="btn-icon" class="text-lg">✨</span>
+                            <span id="btn-text">دریافت رزق معنوی و راهکار</span>
+                            <div id="btn-loader" class="loader hidden"></div>
+                        </button>
+                    </div>
+
+                    <!-- Output Area -->
+                    <div id="result-area" class="hidden pb-24">
+                        <div class="flex items-center gap-2.5 mb-5 px-3 mt-8">
+                            <div class="h-6 w-1.5 bg-primary rounded-full"></div>
+                            <h2 class="font-bold text-slate-800 text-lg">رزق معنوی و راهکار عملیاتی</h2>
+                        </div>
+                        <div id="ai-output" class="space-y-4"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderSchedule(container) {
+            let html = `
+                <div class="fade-in space-y-5">
+                    <div class="flex justify-between items-center px-2 mb-2">
+                        <div>
+                            <h2 class="text-xl font-black text-slate-800">نظم و جهاد</h2>
+                            <p class="text-xs text-slate-500 mt-1">سین برنامه عملیاتی روزانه</p>
+                        </div>
+                        <button onclick="addScheduleItem()" class="btn-press bg-primary text-white px-4 py-2.5 rounded-2xl text-xs font-bold shadow-lg shadow-cyan-100 hover:bg-primary-hover transition-all flex items-center gap-1.5">
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            برنامه جدید
+                        </button>
+                    </div>
+
+                    <div class="space-y-3 pb-24">
+            `;
+
+            state.schedule.sort((a,b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+
+            state.schedule.forEach((item, index) => {
+                html += `
+                    <div class="bg-white p-2.5 pl-4 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-3 transition-all hover:border-cyan-100">
+                        <div class="relative min-w-[75px] text-center">
+                            <span class="text-primary font-black text-lg font-[Vazirmatn] tracking-tight">${toPersianDigits(item.time)}</span>
+                            <input type="time" value="${item.time}" 
+                                onchange="updateSchedule(${index}, 'time', this.value)"
+                                class="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10">
+                        </div>
+                        
+                        <div class="flex-grow">
+                            <input type="text" value="${item.title.replace(/"/g,'&quot;')}" 
+                                onchange="updateSchedule(${index}, 'title', this.value)"
+                                class="w-full font-bold text-slate-700 bg-transparent border-none focus:ring-0 p-0 placeholder-slate-300 text-sm" 
+                                placeholder="عنوان برنامه">
+                        </div>
+
+                        <!-- Small Delete X -->
+                        <button onclick="deleteSchedule(${index})" class="text-slate-300 hover:text-rose-400 p-2 rounded-full hover:bg-rose-50 transition-colors btn-press">
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                `;
+            });
+
+            html += `</div></div>`;
+            container.innerHTML = html;
+        }
+
+        function renderProfiles(container) {
+            let html = `
+                <div class="fade-in space-y-5">
+                    <div class="flex justify-between items-end px-2 mb-2">
+                        <div>
+                            <h2 class="text-xl font-black text-slate-800">پرونده‌ها</h2>
+                            <p class="text-xs text-slate-500 mt-1">دیده‌بانی رشد یاران</p>
+                        </div>
+                        <button onclick="openAddProfileModal()" class="btn-press bg-primary text-white px-4 py-2.5 rounded-2xl text-xs font-bold shadow-lg shadow-cyan-100 hover:bg-primary-hover transition-colors flex items-center gap-1.5">
+                            <span>+</span>
+                            <span>سرباز جدید</span>
+                        </button>
+                    </div>
+                    <div class="space-y-6 pb-24">
+            `;
+
+            if (state.profiles.length === 0) {
+                html += `<div class="text-center text-slate-400 py-16 flex flex-col items-center gap-3">
+                    <span class="text-4xl opacity-20">🌱</span>
+                    <span class="text-sm">هنوز پرونده‌ای تشکیل نشده است</span>
+                </div>`;
+            }
+
+            state.profiles.forEach((p, idx) => {
+                const logs = p.logs || [];
+                
+                html += `
+                    <div class="bg-white rounded-[1.75rem] shadow-sm border border-slate-100 overflow-hidden">
+                        <div class="bg-slate-50/60 p-5 flex justify-between items-center border-b border-slate-100">
+                            <div class="flex items-center gap-3.5">
+                                <div class="w-11 h-11 rounded-full bg-white border border-slate-200 flex items-center justify-center font-black text-primary shadow-sm text-lg">
+                                    ${p.name[0] || ''}
+                                </div>
+                                <div>
+                                    <div class="font-bold text-slate-800 text-base">${p.name}</div>
+                                    <div class="text-[10px] text-slate-400 font-bold bg-white px-2 py-0.5 rounded-full inline-block border border-slate-100 mt-0.5">${toPersianDigits(String(p.age))} ساله</div>
+                                </div>
+                            </div>
+                            <!-- Small Delete X -->
+                            <button onclick="deleteProfile(${idx})" class="p-2 text-slate-300 hover:text-rose-400 transition-colors btn-press">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+
+                        <div class="p-5 bg-white">
+                             <div class="timeline-container">
+                                <div class="timeline-line"></div>
+                                <div class="space-y-7">
+                                    ${logs.map((log, logIdx) => {
+                                        const isAi = log.type === 'ai';
+                                        return `
+                                        <div class="timeline-item group">
+                                            <div class="timeline-dot ${isAi ? 'ai' : 'user'}"></div>
+                                            <div class="flex justify-between items-center mb-2 pl-1">
+                                                <div class="relative group/time bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100">
+                                                    <span class="text-[10px] font-bold ${isAi ? 'text-amber-600' : 'text-primary'}">
+                                                        ${toPersianDigits(log.time)}
+                                                    </span>
+                                                    <input type="time" value="${log.time}" 
+                                                        onchange="updateLog(${idx}, ${logIdx}, 'time', this.value)"
+                                                        class="absolute inset-0 opacity-0 w-full h-full cursor-pointer">
+                                                </div>
+                                                
+                                                <div class="flex items-center gap-1.5">
+                                                    ${isAi ? '<span class="text-[9px] bg-amber-50 text-amber-600 px-2 py-0.5 rounded-md font-bold border border-amber-100">هوش مصنوعی</span>' : ''}
+                                                    <!-- Small Delete X -->
+                                                    <button onclick="deleteLog(${idx}, ${logIdx})" class="text-slate-300 hover:text-rose-400 transition-colors p-1.5 btn-press">
+                                                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <textarea 
+                                                onchange="updateLog(${idx}, ${logIdx}, 'note', this.value)"
+                                                oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"
+                                                class="w-full text-sm leading-7 ${isAi ? 'bg-amber-50 border-amber-100 text-amber-900' : 'bg-slate-50 border-slate-100 text-slate-600'} p-3.5 rounded-2xl rounded-tr-sm border shadow-sm focus:bg-white focus:ring-1 focus:ring-cyan-200 focus:text-slate-800 transition-all resize-none overflow-hidden placeholder-slate-300 min-h-[56px] focus:outline-none"
+                                                >${log.note.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea>
+                                        </div>
+                                    `}).join('')}
+                                </div>
+                            </div>
+                            
+                            <div class="mt-8 pt-5 border-t border-dashed border-slate-200 flex gap-2.5">
+                                <input type="text" id="log-input-${idx}" 
+                                    class="flex-grow bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm focus:ring-2 focus:ring-cyan-100 focus:bg-white focus:border-primary transition-all"
+                                    placeholder="ثبت مشاهده جدید..."
+                                    onkeydown="if(event.key === 'Enter') addLog(${idx})">
+                                <button onclick="addLog(${idx})" class="btn-press bg-primary text-white w-12 rounded-2xl flex items-center justify-center hover:bg-primary-hover shadow-lg shadow-cyan-100 transition-colors">
+                                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14m7-7H5"/></svg>
+                                </button>
+                            </div>
+
+                            <button onclick="analyzeProfile(${idx})" id="analyze-btn-${idx}" class="btn-press mt-3 w-full bg-orange-500 text-white py-3.5 rounded-2xl text-xs font-bold hover:bg-orange-600 shadow-lg shadow-orange-100 transition-all flex items-center justify-center gap-2 group">
+                                <svg class="w-4 h-4 text-white group-hover:rotate-12 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                                <span>تحلیل خادم هوشمند</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `</div></div>`;
+            container.innerHTML = html;
+        }
+
+        // --- CORE LOGIC ---
+        async function generateProtocol() {
+            const inputEl = document.getElementById('mentor-input');
+            const input = inputEl ? inputEl.value : '';
+            if (!input.trim()) return showToast('لطفا ابتدا دغدغه خود را بنویسید');
+
+            const btnText = document.getElementById('btn-text');
+            const btnLoader = document.getElementById('btn-loader');
+            const outputArea = document.getElementById('result-area');
+            const aiOutput = document.getElementById('ai-output');
+
+            if (btnText) btnText.classList.add('hidden');
+            if (btnLoader) btnLoader.classList.remove('hidden');
+            if (outputArea) outputArea.classList.add('hidden');
+
+            try {
+                const timeNow = getCurrentTime();
+                const currentEvent = getCurrentEvent();
+                const safeProfiles = state.profiles.map(p => ({ name: p.name, age: p.age, recent_log: (p.logs && p.logs.length) ? p.logs[p.logs.length-1]?.note : "بدون ثبت" }));
+
+                const userPrompt = `
+                    Current Context:
+                    - Time: ${timeNow}
+                    - Current Event: ${currentEvent ? currentEvent.title : 'Free Time'}
+                    - User (Mentor) Input: "${input}"
+                    - Students: ${JSON.stringify(safeProfiles)}
+                `;
+
+                const rawText = await callGemini(userPrompt, state.prompts.mentorProtocol);
+
+                let result;
+                try {
+                    let clean = String(rawText).replace(/```json\n?|```/g, '').trim();
+                    result = typeof clean === 'string' ? JSON.parse(clean) : clean;
+                } catch (e) {
+                    result = { diagnosis: "خطا در فرمت خروجی", action: String(rawText), ammo: "...", targeting: "..." };
+                }
+
+                const html = `
+                    <div class="protocol-card border-amber-500">
+                        <div class="bg-amber-50 p-4 font-bold text-amber-800 text-sm flex items-center gap-2.5 border-b border-amber-100">
+                            <span class="text-xl">🩺</span> تشخیص و ریشه‌یابی
+                        </div>
+                        <div class="p-5 text-sm leading-8 text-slate-700 bg-white">${escapeHtml(String(result.diagnosis || '—'))}</div>
+                    </div>
+                    <div class="protocol-card border-emerald-500">
+                        <div class="bg-emerald-50 p-4 font-bold text-emerald-800 text-sm flex items-center gap-2.5 border-b border-emerald-100">
+                            <span class="text-xl">⚡</span> اقدام جهادی فوری
+                        </div>
+                        <div class="p-5 text-sm leading-8 text-slate-700 bg-white">${escapeHtml(String(result.action || '—'))}</div>
+                    </div>
+                    <div class="protocol-card border-cyan-500">
+                        <div class="bg-cyan-50 p-4 font-bold text-cyan-800 text-sm flex items-center gap-2.5 border-b border-cyan-100">
+                            <span class="text-xl">💎</span> رزق معنوی (حدیث/نکته)
+                        </div>
+                        <div class="p-5 text-sm leading-8 text-slate-700 bg-cyan-50/20 italic">"${escapeHtml(String(result.ammo || '—'))}"</div>
+                    </div>
+                    <div class="protocol-card border-rose-500">
+                        <div class="bg-rose-50 p-4 font-bold text-rose-800 text-sm flex items-center gap-2.5 border-b border-rose-100">
+                            <span class="text-xl">🎯</span> تقسیم سنگر (مسئولیت‌ها)
+                        </div>
+                        <div class="p-5 text-sm leading-8 text-slate-700 bg-white">${escapeHtml(String(result.targeting || '—'))}</div>
+                    </div>
+                `;
+
+                if (aiOutput) aiOutput.innerHTML = html;
+                if (outputArea) {
+                    outputArea.classList.remove('hidden');
+                    outputArea.scrollIntoView({ behavior: 'smooth' });
+                }
+
+            } catch (error) {
+                console.error(error);
+                showToast('خطا در ارتباط با خادم هوشمند.');
+            } finally {
+                if (btnText) btnText.classList.remove('hidden');
+                if (btnLoader) btnLoader.classList.add('hidden');
+            }
+        }
+
+        async function analyzeProfile(index) {
+            const btn = document.getElementById(`analyze-btn-${index}`);
+            if (!btn) return showToast('دکمه یافت نشد');
+            const originalContent = btn.innerHTML;
+            const profile = state.profiles[index];
+
+            btn.disabled = true;
+            btn.innerHTML = `<div class="loader w-4 h-4 border-white border-b-transparent"></div> <span>در حال تفکر...</span>`;
+
+            try {
+                const userPrompt = `
+                    Profile Data:
+                    Name: ${profile.name}
+                    Age: ${profile.age}
+                    Full Logs (Chronological): ${JSON.stringify(profile.logs)}
+                `;
+
+                const rawText = await callGemini(userPrompt, state.prompts.profileAnalysis);
+
+                let result;
+                try {
+                     let clean = String(rawText).replace(/```json\n?|```/g, '').trim();
+                     result = JSON.parse(clean);
+                } catch (e) {
+                    result = { sentiment: "تحلیل متنی", advice: String(rawText) };
+                }
+
+                const newLog = {
+                    time: getCurrentTime(),
+                    note: `[${result.sentiment}]: ${result.advice}`,
+                    type: 'ai'
+                };
+
+                state.profiles[index].logs.push(newLog);
+                saveData();
+                renderProfiles(document.getElementById('app-container'));
+                showToast('تحلیل هوشمند در پرونده ثبت شد');
+
+            } catch (error) {
+                console.error(error);
+                showToast('خطا در دریافت تحلیل.');
+            } finally {
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+            }
+        }
+
+        // --- CRUD ---
+        function updateSchedule(index, field, value) {
+            state.schedule[index][field] = value;
+            if (field === 'time') {
+                state.schedule.sort((a,b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+                saveData();
+                renderSchedule(document.getElementById('app-container'));
+            } else {
+                saveData();
+            }
+        }
+
+        function deleteSchedule(index) {
+            openConfirm('آیا از حذف این برنامه از سین عملیاتی مطمئن هستید؟', () => {
+                state.schedule.splice(index, 1);
+                saveData();
+                renderSchedule(document.getElementById('app-container'));
+                showToast('برنامه با موفقیت حذف شد');
+            });
+        }
+
+        function addScheduleItem() {
+            state.schedule.push({ id: Date.now(), time: "00:00", title: "" });
+            saveData();
+            renderSchedule(document.getElementById('app-container'));
+        }
+
+        function updateLog(profileIndex, logIndex, field, value) {
+            if (field === 'note' && !String(value).trim()) return;
+            state.profiles[profileIndex].logs[logIndex][field] = value;
+            saveData();
+        }
+
+        function deleteLog(profileIndex, logIndex) {
+            openConfirm('آیا این ثبت از پرونده پاک شود؟', () => {
+                state.profiles[profileIndex].logs.splice(logIndex, 1);
+                saveData();
+                renderProfiles(document.getElementById('app-container'));
+                showToast('ثبت حذف شد');
+            });
+        }
+
+        function addLog(index) {
+            const input = document.getElementById(`log-input-${index}`);
+            const val = input ? input.value.trim() : '';
+            if(!val) return;
+
+            state.profiles[index].logs.push({
+                time: getCurrentTime(),
+                note: val,
+                type: 'user'
+            });
+            saveData();
+            if (input) input.value = '';
+            renderProfiles(document.getElementById('app-container'));
+        }
+
+        function deleteProfile(index) {
+            openConfirm('آیا کل پرونده این سرباز حذف شود؟ اطلاعات قابل بازگشت نیست.', () => {
+                state.profiles.splice(index, 1);
+                saveData();
+                renderProfiles(document.getElementById('app-container'));
+                showToast('پرونده بایگانی (حذف) شد');
+            });
+        }
+
+        function resetFactory() {
+            openConfirm('آیا مطمئن هستید؟ تمام اطلاعات پاک شده و برنامه به حالت اولیه برمی‌گردد.', () => {
+                localStorage.clear();
+                location.reload();
+            });
+        }
+
+        // --- SETTINGS & MODALS ---
+        function openSettingsModal() {
+            const modalContent = `
+                <div class="h-full overflow-y-auto bg-white custom-scrollbar">
+                    <div class="p-5 pb-4 border-b border-slate-100 sticky top-0 bg-white/95 backdrop-blur-sm z-10">
+                        <h3 class="font-black text-xl text-slate-800">جعبه ابزار خادم</h3>
+                        <p class="text-xs text-slate-400 mt-1">تنظیمات هوش مصنوعی و دستورالعمل‌ها</p>
+                    </div>
+
+                    <div class="p-5 space-y-6">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-2 flex items-center gap-1.5">
+                                <span class="text-lg">🧠</span> دستورالعمل تحلیل پرونده (System Prompt)
+                            </label>
+                            <textarea id="set-prompt-profile" class="w-full text-xs p-4 border border-slate-200 rounded-2xl bg-slate-50 focus:border-primary focus:bg-white focus:outline-none font-mono leading-relaxed shadow-inner text-slate-600" rows="6">${escapeHtml(state.prompts.profileAnalysis)}</textarea>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-2 flex items-center gap-1.5">
+                                <span class="text-lg">⚡</span> دستورالعمل اتاق فکر (Protocol Prompt)
+                            </label>
+                            <textarea id="set-prompt-main" class="w-full text-xs p-4 border border-slate-200 rounded-2xl bg-slate-50 focus:border-primary focus:bg-white focus:outline-none font-mono leading-relaxed shadow-inner text-slate-600" rows="6">${escapeHtml(state.prompts.mentorProtocol)}</textarea>
+                        </div>
+
+                         <!-- Educational Link Section -->
+                        <a href="#" target="_blank" class="block group">
+                            <div class="bg-gradient-to-br from-indigo-50 to-white border border-indigo-100 rounded-3xl p-4 shadow-sm group-hover:shadow-md transition-all group-active:scale-95">
+                                <div class="flex items-center gap-4">
+                                    <div class="bg-indigo-100 p-3 rounded-2xl text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-slate-800 text-sm group-hover:text-indigo-700 transition-colors">درسنامه جامع مربیان</h4>
+                                        <p class="text-[10px] text-slate-500 mt-1">مطالعه سند تعاملی اصول تربیتی اعتکاف</p>
+                                    </div>
+                                    <div class="mr-auto text-indigo-300 group-hover:text-indigo-500">
+                                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 19l-7-7 7-7"/></svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                        
+                        <div class="pt-2 space-y-3">
+                            <button onclick="saveSettings()" class="btn-press w-full bg-primary text-white py-3.5 rounded-2xl font-bold hover:bg-primary-hover transition-colors shadow-lg shadow-cyan-100">ذخیره تغییرات</button>
+                            <button onclick="closeModal()" class="btn-press w-full text-slate-400 py-2 text-sm font-bold hover:text-slate-600">انصراف</button>
+                            <div class="pt-2 flex justify-center">
+                                <button onclick="resetFactory()" class="text-[10px] text-rose-300 hover:text-rose-500 transition-colors">بازنشانی به تنظیمات کارخانه</button>
+                            </div>
+                        </div>
+                        <div class="h-6"></div>
+                    </div>
+                </div>
+            `;
+            showModal(modalContent);
+        }
+
+        function saveSettings() {
+            const p1 = document.getElementById('set-prompt-profile');
+            const p2 = document.getElementById('set-prompt-main');
+            if (p1 && p2) {
+                state.prompts.profileAnalysis = p1.value;
+                state.prompts.mentorProtocol = p2.value;
+                saveData();
+                closeModal();
+                showToast('ابزارها به‌روزرسانی شدند');
+            } else {
+                showToast('خطا در خواندن تنظیمات.');
+            }
+        }
+
+        function openAddProfileModal() {
+            const modalContent = `
+                <div class="h-full overflow-y-auto bg-white custom-scrollbar flex flex-col">
+                    <div class="p-6 text-center">
+                        <div class="mx-auto flex items-center justify-center h-14 w-14 rounded-full bg-cyan-50 mb-6 text-2xl">
+                            🌱
+                        </div>
+                        <h3 class="text-xl leading-6 font-black text-slate-800 mb-2">سرباز جدید</h3>
+                        <p class="text-sm text-slate-400 mb-6">مشخصات یار جدید امام زمان را وارد کنید</p>
+                        
+                        <div class="space-y-4 mb-6 text-right">
+                            <div>
+                                <input id="new-profile-name" class="w-full p-4 rounded-2xl border border-slate-200 bg-slate-50 text-center font-bold text-slate-700 focus:bg-white focus:border-primary focus:outline-none transition-all" placeholder="نام و نام خانوادگی">
+                            </div>
+                            <div>
+                                <input id="new-profile-age" type="number" min="1" class="w-full p-4 rounded-2xl border border-slate-200 bg-slate-50 text-center text-slate-700 focus:bg-white focus:border-primary focus:outline-none transition-all" placeholder="سن (سال)">
+                            </div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <button onclick="saveNewProfile()" class="btn-press w-full bg-slate-800 text-white py-3.5 rounded-2xl font-bold hover:bg-slate-900 transition-colors shadow-lg shadow-slate-200">ثبت پرونده</button>
+                            <button onclick="closeModal()" class="btn-press w-full text-slate-400 py-2 text-sm font-bold hover:text-slate-600">انصراف</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            showModal(modalContent);
+        }
+
+        function saveNewProfile() {
+            const nameEl = document.getElementById('new-profile-name');
+            const ageEl = document.getElementById('new-profile-age');
+            const name = nameEl ? nameEl.value.trim() : '';
+            const age = ageEl ? parseInt(ageEl.value, 10) : NaN;
+            if (!name) return showToast('نام سرباز را وارد کنید');
+            if (!age || age <= 0) return showToast('سن معتبر وارد کنید');
+
+            state.profiles.push({ name, age, logs: [] });
+            saveData();
+            closeModal();
+            renderProfiles(document.getElementById('app-container'));
+            showToast('پرونده جدید تشکیل شد');
+        }
+
+        // --- UTILS ---
+        function showModal(content) {
+            const overlay = document.getElementById('modal-overlay');
+            const card = document.getElementById('modal-card');
+            card.innerHTML = content;
+            overlay.classList.remove('hidden');
+            setTimeout(() => { 
+                card.classList.remove('scale-95', 'opacity-0'); 
+                card.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        function closeModal() {
+            const overlay = document.getElementById('modal-overlay');
+            const card = document.getElementById('modal-card');
+            card.classList.remove('scale-100', 'opacity-100');
+            card.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => { 
+                overlay.classList.add('hidden'); 
+                card.innerHTML = ''; 
+            }, 300);
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            t.classList.remove('opacity-0', 'scale-90');
+            t.style.pointerEvents = 'auto';
+            setTimeout(() => { t.classList.add('opacity-0', 'scale-90'); t.style.pointerEvents = 'none'; }, 3000);
+        }
+
+        function getCurrentTime() {
+            const d = new Date();
+            const hh = String(d.getHours()).padStart(2,'0');
+            const mm = String(d.getMinutes()).padStart(2,'0');
+            return `${hh}:${mm}`;
+        }
+
+        function getCurrentEvent() {
+            const now = new Date();
+            const nowMin = now.getHours() * 60 + now.getMinutes();
+            let found = null;
+            for (let i = 0; i < state.schedule.length; i++) {
+                const itemMin = timeToMinutes(state.schedule[i].time);
+                if (nowMin <= itemMin) { found = state.schedule[i]; break; }
+            }
+            return found || state.schedule[0] || { title: "وقت آزاد" };
+        }
+
+        function escapeHtml(unsafe) {
+            return String(unsafe)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function windowExpose() {
+            Object.assign(window, {
+                router,
+                generateProtocol,
+                openSettingsModal,
+                addScheduleItem,
+                updateSchedule,
+                deleteSchedule,
+                openAddProfileModal,
+                saveNewProfile,
+                updateLog,
+                deleteLog,
+                addLog,
+                deleteProfile,
+                analyzeProfile,
+                saveSettings,
+                closeModal,
+                resetFactory,
+                executeConfirm
+            });
+        }
+
+        // Init
+        windowExpose();
+        router('home');
+
+    </script>
+</body>
+</html>

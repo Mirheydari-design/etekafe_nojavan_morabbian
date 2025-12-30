@@ -1,0 +1,22 @@
+{
+  "name": "etekaf-assistant",
+  "version": "1.0.0",
+  "description": "دستیار هوشمند خادمان اعتکاف",
+  "scripts": {
+    "build:config": "node build-config.js",
+    "setup": "npm install && npm run build:config",
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "etekaf",
+    "assistant",
+    "ai"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.3.1"
+  }
+}
+

@@ -1,0 +1,18 @@
+# فایل‌های حساس - نباید در Git commit شوند
+.env
+config.js
+
+# فایل‌های سیستم
+.DS_Store
+Thumbs.db
+*.log
+
+# Node modules (اگر استفاده می‌کنید)
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
