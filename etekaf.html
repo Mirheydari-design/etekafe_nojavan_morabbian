@@ -127,7 +127,8 @@
         const config = window.APP_CONFIG || {
             apiKey: "",
             baseUrl: "https://selfclaude.flearning.ir/",
-            apiEndpoint: "chat/completions"
+            apiEndpoint: "chat/completions",
+            promptsUrl: "https://opensheet.elk.sh/1yxTX1rxNpJ_HDDLxpgi4CmqIJ3S3uZgII9phrjUl_uY/Sheet1" // URL برای بارگذاری دستورالعمل‌ها از Google Sheet
         };
         
         const apiKey = config.apiKey;
@@ -243,7 +244,106 @@
             schedule: JSON.parse(localStorage.getItem('schedule')) || DEFAULT_SCHEDULE,
             profiles: JSON.parse(localStorage.getItem('profiles')) || DEFAULT_PROFILES
         };
-        let confirmCallback = null; 
+        let confirmCallback = null;
+
+        // --- FETCH PROMPTS FROM URL ---
+        let fetchPromptsPromise = null; // Promise برای fetch
+        
+        async function fetchPromptsFromUrl() {
+            const promptsUrl = config.promptsUrl;
+            if (!promptsUrl) {
+                console.log('No prompts URL configured, using defaults');
+                return Promise.resolve();
+            }
+
+            try {
+                // اضافه کردن timestamp برای جلوگیری از cache
+                const urlWithCacheBuster = `${promptsUrl}?t=${Date.now()}`;
+                const response = await fetch(urlWithCacheBuster, {
+                    cache: 'no-cache',
+                    headers: {
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache',
+                        'Expires': '0'
+                    }
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const sheetData = await response.json();
+                
+                // تبدیل <br> به خط جدید
+                const convertBrToNewline = (text) => {
+                    if (!text) return '';
+                    return String(text).replace(/<br\s*\/?>/gi, '\n');
+                };
+                
+                // OpenSheet یک آرایه از اشیاء برمی‌گرداند
+                // هر ردیف یک شیء است با فیلدهای type, mentorProtocol, profileAnalysis
+                if (Array.isArray(sheetData) && sheetData.length > 0) {
+                    // پیدا کردن ردیف با type = "System Instruction" (case-insensitive)
+                    const systemInstructionRow = sheetData.find(row => 
+                        row.type && String(row.type).trim().toLowerCase() === 'system instruction'
+                    );
+                    
+                    if (systemInstructionRow) {
+                        let updated = false;
+                        // به‌روزرسانی دستورالعمل‌ها
+                        if (systemInstructionRow.mentorProtocol) {
+                            state.prompts.mentorProtocol = convertBrToNewline(systemInstructionRow.mentorProtocol);
+                            updated = true;
+                        }
+                        if (systemInstructionRow.profileAnalysis) {
+                            state.prompts.profileAnalysis = convertBrToNewline(systemInstructionRow.profileAnalysis);
+                            updated = true;
+                        }
+                        
+                        if (updated) {
+                            // ذخیره در localStorage
+                            saveData();
+                            console.log('✅ Prompts fetched and updated successfully from Google Sheet');
+                            // اگر modal تنظیمات باز است، آن را به‌روزرسانی کن
+                            const modalCard = document.getElementById('modal-card');
+                            if (modalCard && modalCard.innerHTML.includes('set-prompt-main')) {
+                                openSettingsModal();
+                            }
+                        }
+                    } else {
+                        // اگر ردیف System Instruction پیدا نشد، سعی می‌کنیم از اولین ردیف استفاده کنیم
+                        const firstRow = sheetData[0];
+                        if (firstRow && (firstRow.mentorProtocol || firstRow.profileAnalysis)) {
+                            let updated = false;
+                            if (firstRow.mentorProtocol) {
+                                state.prompts.mentorProtocol = convertBrToNewline(firstRow.mentorProtocol);
+                                updated = true;
+                            }
+                            if (firstRow.profileAnalysis) {
+                                state.prompts.profileAnalysis = convertBrToNewline(firstRow.profileAnalysis);
+                                updated = true;
+                            }
+                            if (updated) {
+                                saveData();
+                                console.log('⚠️ System Instruction row not found, used first row instead');
+                                // اگر modal تنظیمات باز است، آن را به‌روزرسانی کن
+                                const modalCard = document.getElementById('modal-card');
+                                if (modalCard && modalCard.innerHTML.includes('set-prompt-main')) {
+                                    openSettingsModal();
+                                }
+                            }
+                        } else {
+                            console.warn('❌ System Instruction row not found and first row is invalid');
+                        }
+                    }
+                } else {
+                    console.warn('❌ Invalid sheet data format - expected array');
+                }
+            } catch (error) {
+                console.warn('Failed to fetch prompts from URL, using defaults:', error);
+            }
+        }
+
+        // بارگذاری دستورالعمل‌ها در هنگام لود صفحه
+        fetchPromptsPromise = fetchPromptsFromUrl(); 
 
         function saveData() {
             localStorage.setItem('prompts', JSON.stringify(state.prompts));
@@ -522,6 +622,17 @@
 
         // --- CORE LOGIC ---
         async function generateProtocol() {
+            // منتظر بمان تا fetch کامل شود
+            if (fetchPromptsPromise) {
+                await fetchPromptsPromise;
+            }
+            
+            // اطمینان از اینکه state به‌روز است (از localStorage بخوان)
+            const savedPrompts = JSON.parse(localStorage.getItem('prompts'));
+            if (savedPrompts) {
+                state.prompts = savedPrompts;
+            }
+            
             const inputEl = document.getElementById('mentor-input');
             const input = inputEl ? inputEl.value : '';
             if (!input.trim()) return showToast('لطفا ابتدا دغدغه خود را بنویسید');
@@ -601,6 +712,17 @@
         }
 
         async function analyzeProfile(index) {
+            // منتظر بمان تا fetch کامل شود
+            if (fetchPromptsPromise) {
+                await fetchPromptsPromise;
+            }
+            
+            // اطمینان از اینکه state به‌روز است (از localStorage بخوان)
+            const savedPrompts = JSON.parse(localStorage.getItem('prompts'));
+            if (savedPrompts) {
+                state.prompts = savedPrompts;
+            }
+            
             const btn = document.getElementById(`analyze-btn-${index}`);
             if (!btn) return showToast('دکمه یافت نشد');
             const originalContent = btn.innerHTML;
@@ -721,7 +843,18 @@
         }
 
         // --- SETTINGS & MODALS ---
-        function openSettingsModal() {
+        async function openSettingsModal() {
+            // اگر fetch در حال انجام است، منتظر بمان
+            if (fetchPromptsPromise) {
+                await fetchPromptsPromise;
+            }
+            
+            // اطمینان از اینکه state به‌روز است (از localStorage بخوان)
+            const savedPrompts = JSON.parse(localStorage.getItem('prompts'));
+            if (savedPrompts) {
+                state.prompts = savedPrompts;
+            }
+            
             const modalContent = `
                 <div class="h-full overflow-y-auto bg-white custom-scrollbar">
                     <div class="p-5 pb-4 border-b border-slate-100 sticky top-0 bg-white/95 backdrop-blur-sm z-10">
@@ -732,29 +865,84 @@
                     <div class="p-5 space-y-6">
                         <div>
                             <label class="block text-xs font-bold text-slate-600 mb-2 flex items-center gap-1.5">
-                                <span class="text-lg">🧠</span> دستورالعمل تحلیل پرونده (System Prompt)
+                                <span class="text-lg">⚡</span> دستورالعمل اتاق فکر (Protocol Prompt)
                             </label>
-                            <textarea id="set-prompt-profile" class="w-full text-xs p-4 border border-slate-200 rounded-2xl bg-slate-50 focus:border-primary focus:bg-white focus:outline-none font-mono leading-relaxed shadow-inner text-slate-600" rows="6">${escapeHtml(state.prompts.profileAnalysis)}</textarea>
+                            <textarea id="set-prompt-main" readonly class="w-full text-xs p-4 border border-slate-200 rounded-2xl bg-slate-50 focus:border-primary focus:bg-white focus:outline-none font-mono leading-relaxed shadow-inner text-slate-600 cursor-not-allowed" rows="6">${escapeHtml(state.prompts.mentorProtocol || '')}</textarea>
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-600 mb-2 flex items-center gap-1.5">
-                                <span class="text-lg">⚡</span> دستورالعمل اتاق فکر (Protocol Prompt)
+                                <span class="text-lg">🧠</span> دستورالعمل تحلیل پرونده (System Prompt)
                             </label>
-                            <textarea id="set-prompt-main" class="w-full text-xs p-4 border border-slate-200 rounded-2xl bg-slate-50 focus:border-primary focus:bg-white focus:outline-none font-mono leading-relaxed shadow-inner text-slate-600" rows="6">${escapeHtml(state.prompts.mentorProtocol)}</textarea>
+                            <textarea id="set-prompt-profile" readonly class="w-full text-xs p-4 border border-slate-200 rounded-2xl bg-slate-50 focus:border-primary focus:bg-white focus:outline-none font-mono leading-relaxed shadow-inner text-slate-600 cursor-not-allowed" rows="6">${escapeHtml(state.prompts.profileAnalysis || '')}</textarea>
                         </div>
 
                          <!-- Educational Link Section -->
-                        <a href="#" target="_blank" class="block group">
-                            <div class="bg-gradient-to-br from-indigo-50 to-white border border-indigo-100 rounded-3xl p-4 shadow-sm group-hover:shadow-md transition-all group-active:scale-95">
+                        <a href="darsname_etekaf/etekaf_darsname_simple.html" target="_blank" class="block group">
+                            <div class="bg-gradient-to-br from-rose-50 to-white border border-rose-100 rounded-3xl p-4 shadow-sm group-hover:shadow-md transition-all group-active:scale-95">
                                 <div class="flex items-center gap-4">
-                                    <div class="bg-indigo-100 p-3 rounded-2xl text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                                    <div class="bg-rose-100 p-3 rounded-2xl text-rose-600 group-hover:bg-rose-600 group-hover:text-white transition-colors">
                                         <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
                                     </div>
                                     <div>
-                                        <h4 class="font-bold text-slate-800 text-sm group-hover:text-indigo-700 transition-colors">درسنامه جامع مربیان</h4>
+                                        <h4 class="font-bold text-slate-800 text-sm group-hover:text-rose-700 transition-colors">درسنامه جامع مربیان</h4>
                                         <p class="text-[10px] text-slate-500 mt-1">مطالعه سند تعاملی اصول تربیتی اعتکاف</p>
                                     </div>
-                                    <div class="mr-auto text-indigo-300 group-hover:text-indigo-500">
+                                    <div class="mr-auto text-rose-300 group-hover:text-rose-500">
+                                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 19l-7-7 7-7"/></svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+
+                        <!-- تفکر تعاون آفرینی -->
+                        <a href="https://taavonafarin.ir" target="_blank" class="block group">
+                            <div class="bg-gradient-to-br from-blue-50 to-white border border-blue-100 rounded-3xl p-4 shadow-sm group-hover:shadow-md transition-all group-active:scale-95">
+                                <div class="flex items-center gap-4">
+                                    <div class="bg-blue-100 p-3 rounded-2xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors relative">
+                                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                        <span class="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white"></span>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-slate-800 text-sm group-hover:text-blue-700 transition-colors">معرفی تفکر تعاون آفرینی</h4>
+                                        <p class="text-[10px] text-slate-500 mt-1">وبسایت گروه تفکر تعاون آفرین</p>
+                                    </div>
+                                    <div class="mr-auto text-blue-300 group-hover:text-blue-500">
+                                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 19l-7-7 7-7"/></svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+
+                        <!-- گروه تفکر تعاون آفرین در ایتا -->
+                        <a href="https://eitaa.com/taavonafarin" target="_blank" class="block group">
+                            <div class="bg-gradient-to-br from-orange-50 to-white border border-orange-100 rounded-3xl p-4 shadow-sm group-hover:shadow-md transition-all group-active:scale-95">
+                                <div class="flex items-center gap-4">
+                                    <div class="bg-orange-100 p-3 rounded-2xl text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-slate-800 text-sm group-hover:text-orange-700 transition-colors">گروه تفکر تعاون آفرین در ایتا</h4>
+                                        <p class="text-[10px] text-slate-500 mt-1">با عضویت در گروه، همیشه به روز بمانید</p>
+                                    </div>
+                                    <div class="mr-auto text-orange-300 group-hover:text-orange-500">
+                                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 19l-7-7 7-7"/></svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+
+                        <!-- پیشنهادات و نظرات -->
+                        <a href="https://eitaa.com/yoosof_e_zahra" target="_blank" class="block group">
+                            <div class="bg-gradient-to-br from-purple-50 to-white border border-purple-100 rounded-3xl p-4 shadow-sm group-hover:shadow-md transition-all group-active:scale-95">
+                                <div class="flex items-center gap-4">
+                                    <div class="bg-purple-100 p-3 rounded-2xl text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-slate-800 text-sm group-hover:text-purple-700 transition-colors">پیشنهادات و نظرات</h4>
+                                        <p class="text-[10px] text-slate-500 mt-1">بازخوردهای خود را به ما برسانید</p>
+                                    </div>
+                                    <div class="mr-auto text-purple-300 group-hover:text-purple-500">
                                         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 19l-7-7 7-7"/></svg>
                                     </div>
                                 </div>
@@ -762,6 +950,10 @@
                         </a>
                         
                         <div class="pt-2 space-y-3">
+                            <button onclick="refreshPrompts()" class="btn-press w-full bg-blue-500 text-white py-3.5 rounded-2xl font-bold hover:bg-blue-600 transition-colors shadow-lg shadow-blue-100 flex items-center justify-center gap-2">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                <span>به‌روزرسانی دستورالعمل‌ها از Google Sheet</span>
+                            </button>
                             <button onclick="saveSettings()" class="btn-press w-full bg-primary text-white py-3.5 rounded-2xl font-bold hover:bg-primary-hover transition-colors shadow-lg shadow-cyan-100">ذخیره تغییرات</button>
                             <button onclick="closeModal()" class="btn-press w-full text-slate-400 py-2 text-sm font-bold hover:text-slate-600">انصراف</button>
                             <div class="pt-2 flex justify-center">
@@ -775,18 +967,21 @@
             showModal(modalContent);
         }
 
+        async function refreshPrompts() {
+            showToast('در حال به‌روزرسانی دستورالعمل‌ها...');
+            // fetch جدید انجام بده
+            fetchPromptsPromise = fetchPromptsFromUrl();
+            await fetchPromptsPromise;
+            // modal را به‌روزرسانی کن
+            openSettingsModal();
+            showToast('دستورالعمل‌ها با موفقیت به‌روزرسانی شدند');
+        }
+
         function saveSettings() {
-            const p1 = document.getElementById('set-prompt-profile');
-            const p2 = document.getElementById('set-prompt-main');
-            if (p1 && p2) {
-                state.prompts.profileAnalysis = p1.value;
-                state.prompts.mentorProtocol = p2.value;
-                saveData();
-                closeModal();
-                showToast('ابزارها به‌روزرسانی شدند');
-            } else {
-                showToast('خطا در خواندن تنظیمات.');
-            }
+            // دستورالعمل‌ها دیگر قابل ویرایش نیستند و از URL بارگذاری می‌شوند
+            // این تابع فقط برای سازگاری با کد قبلی نگه داشته شده
+            closeModal();
+            showToast('دستورالعمل‌ها از سرور بارگذاری می‌شوند و قابل ویرایش نیستند');
         }
 
         function openAddProfileModal() {
@@ -907,6 +1102,7 @@
                 deleteProfile,
                 analyzeProfile,
                 saveSettings,
+                refreshPrompts,
                 closeModal,
                 resetFactory,
                 executeConfirm

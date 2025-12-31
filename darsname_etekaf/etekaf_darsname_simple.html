@@ -1,12 +1,37 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  BookOpen, Heart, Sun, Star, Users, Shield, Map, Anchor, Feather, 
-  ChevronDown, ChevronLeft, ChevronUp, Info, Menu, X, Hash, Search, ArrowLeft,
-  Layout, Book, Calendar, MousePointerClick, Lightbulb, Sparkles, MessageCircle
-} from 'lucide-react';
-
-// --- داده‌ها ---
-const manifestoData = {
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>شیوه‌نامه جامع تربیتی اعتکاف - دختران محیا</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * {
+            font-family: 'Vazirmatn', sans-serif !important;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn { animation: fadeIn 0.3s ease-in; }
+        .animate-slideDown { animation: slideDown 0.3s ease-in; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="min-h-screen bg-white text-right text-gray-800" style="font-family: 'Vazirmatn', sans-serif;">
+    <div id="app"></div>
+    
+    <script>
+        // داده‌ها
+        const manifestoData = {
   id: "intro",
   title: "کلیات و مبانی (مانیفست تربیتی)",
   content: [
@@ -40,8 +65,7 @@ const manifestoData = {
     }
   ]
 };
-
-const gradesData = [
+        const gradesData = [
   {
     id: 'grade2',
     title: 'پایه دوم ابتدایی',
@@ -49,7 +73,7 @@ const gradesData = [
     groupName: 'شکوفه‌های نرجس',
     age: '۸ سالگی',
     themeColor: 'rose',
-    icon: <Sun className="w-5 h-5" />,
+    icon: '☀️',
     principles: [
       "اصل کلیدی: خدا در این سن با صفت «قدرتمندِ مهربان» شناخته می‌شود. لذت اعتکاف از جنس «کشف و امنیت» است، نه «شهربازی».",
       "ممنوعات: آینه، عطر، خوراکی‌های تفننی و ابزارآلات حواس‌پرتی حذف می‌شوند تا تمرکز بر «درون» باشد.",
@@ -307,7 +331,7 @@ const gradesData = [
     groupName: 'فرشته‌های انتظار',
     age: '۹ سالگی',
     themeColor: 'pink',
-    icon: <Feather className="w-5 h-5" />,
+    icon: '🪶',
     principles: [
       "اصل کلیدی: در این سن، «تکلیف» نباید به عنوان بارِ سنگین معرفی شود، بلکه باید به عنوان «تاجِ افتخار» و «کارت دعوت خصوصی خدا» ترسیم شود.",
       "تغییر فضا: رفتار مربیان باید از حالت «مربی مهدکودک» به حالت «مشاور و همراه» تغییر کند تا کودک حس بزرگی و تشخص کند.",
@@ -477,7 +501,7 @@ const gradesData = [
     groupName: 'حافظانِ عهد',
     age: '۱۰ سالگی',
     themeColor: 'emerald',
-    icon: <Shield className="w-5 h-5" />,
+    icon: '🛡️',
     principles: [
       "اصل کلیدی: تمرین «تعهد» و «نظم در بندگی». در این سن، دختران باید یاد بگیرند که شیعه یعنی «کسی که روی حرفش می‌ایستد» و «منظم است».",
       "تغییر فضا: برخورد مربی باید بر اساس «کرامت» و «حساب‌کشیِ نرم» باشد. (مثل برخورد یک فرمانده مهربان با سربازان نوجوان).",
@@ -649,7 +673,7 @@ const gradesData = [
     groupName: 'یاورانِ اباصالح',
     age: '۱۱ سالگی',
     themeColor: 'teal',
-    icon: <Users className="w-5 h-5" />,
+    icon: '👥',
     principles: [
       "اصل کلیدی: خروج از «خودخواهی کودکانه» و چشیدن لذتِ «خدمت به دیگران». یادگیری فرهنگِ «الجار ثُمَّ الدّار» (اول همسایه، بعد خانه).",
       "تغییر فضا: تمرکز بر «کرامت انسانی» و «سخاوت». مربی باید نقش یک «تسهیل‌گر» را داشته باشد که فرصت‌های خدمت کردن را برای بچه‌ها فراهم می‌کند.",
@@ -828,7 +852,7 @@ const gradesData = [
     groupName: 'مسافرانِ جمعه',
     age: '۱۲ سالگی',
     themeColor: 'cyan',
-    icon: <Map className="w-5 h-5" />,
+    icon: '🗺️',
     principles: [
       "اصل کلیدی: خروج از «خودمحوری» و تمرین «زیستِ جمعیِ مومنانه». در این سن، دینداری باید از حالت فردی به حالت «تیمی» درآید.",
       "تغییر فضا: مربی باید نقش «کاپیتان تیم» را داشته باشد. فضا باید فضای «اردوگاه آموزشی» برای یک سفر مهم باشد.",
@@ -1001,7 +1025,7 @@ const gradesData = [
     groupName: 'نسیم ظهور',
     age: '۱۳ سالگی',
     themeColor: 'indigo',
-    icon: <BookOpen className="w-5 h-5" />,
+    icon: '📖',
     principles: [
       "اصل کلیدی: گذار از «تقلید کورکورانه» به «انتخاب آگاهانه». چرا باید چادر بپوشم؟ چرا باید نماز بخوانم؟ (پاسخ‌ها باید استدلالی و عزت‌مندانه باشد).",
       "تغییر فضا: مربی نباید «معلم» باشد، بلکه باید «هم‌فکر» و «سنگ صبور» باشد. اجازه نقد و پرسش داده شود.",
@@ -1180,7 +1204,7 @@ const gradesData = [
     groupName: 'وارثانِ زمین',
     age: '۱۴ سالگی',
     themeColor: 'violet',
-    icon: <Anchor className="w-5 h-5" />,
+    icon: '⚓',
     principles: [
       "اصل کلیدی: گذار از «دینداری احساسی» به «دینداری بر مبنای ولایت». فهم اینکه دین فقط «حالِ خوب» نیست، بلکه «برنامه دقیق برای اداره زندگی» است.",
       "تغییر فضا: برخورد با آن‌ها باید کاملاً مثل «بزرگسالان» باشد. مربی باید نقش «فرمانده» یا «استراتژیست» را ایفا کند.",
@@ -1410,7 +1434,7 @@ const gradesData = [
     groupName: 'پیشگامانِ تمدن',
     age: '۱۵ سالگی',
     themeColor: 'purple',
-    icon: <Star className="w-5 h-5" />,
+    icon: '⭐',
     principles: [
       "اصل کلیدی: عبور از «اصلاح خود» به «اصلاح جامعه». در این سن، دینداری نباید «منزوی» باشد. باید بفهمند که «عافیت‌طلبی» با «انتظار» جمع نمی‌شود.",
       "تغییر فضا: مربی باید نقش «فرمانده میدان» و «تحلیل‌گر ارشد» را داشته باشد. بحث‌ها باید کاملاً جدی، عقلانی و ناظر به مسائل روز (بدون سیاست‌زدگی جناحی، با رویکرد تمدنی) باشد.",
@@ -1646,467 +1670,354 @@ const gradesData = [
     ]
   }
 ];
-
-// --- COMPONENTS ---
-
-const InlineTag = ({ text, themeColor }) => {
-  const colorMap = {
-    rose: "bg-rose-100 text-rose-800",
-    pink: "bg-pink-100 text-pink-800",
-    emerald: "bg-emerald-100 text-emerald-800",
-    teal: "bg-teal-100 text-teal-800",
-    cyan: "bg-cyan-100 text-cyan-800",
-    indigo: "bg-indigo-100 text-indigo-800",
-    violet: "bg-violet-100 text-violet-800",
-    purple: "bg-purple-100 text-purple-800",
-  };
-  return (
-    <span className={`inline-block px-1.5 py-0.5 mx-1 rounded text-[11px] font-bold tracking-tight align-baseline ${colorMap[themeColor]}`}>
-      {text}
-    </span>
-  );
-};
-
-const CollapsibleSection = ({ title, children, defaultOpen = false, className = "" }) => {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-
-  return (
-    <div className={`border border-gray-200 rounded-lg overflow-hidden transition-all duration-300 ${className} ${isOpen ? 'bg-white shadow-sm' : 'bg-gray-50'}`}>
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-3 text-right hover:bg-gray-100 transition-colors"
-      >
-        <div className="font-bold text-gray-800 flex items-center gap-2">
-          {title}
-        </div>
-        {isOpen ? <ChevronUp size={16} className="text-gray-400"/> : <ChevronDown size={16} className="text-gray-400"/>}
-      </button>
-      
-      <div 
-        className={`overflow-hidden transition-all duration-300 ease-in-out ${isOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}
-      >
-        <div className="p-4 border-t border-gray-100 text-justify">
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const SituationCard = ({ text, themeColor = "amber" }) => {
-  if (!text) return null;
-
-  const colorClasses = {
-    amber: { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-900", icon: "text-amber-500", tag: "bg-amber-100 text-amber-800" },
-    rose: { bg: "bg-rose-50", border: "border-rose-200", text: "text-rose-900", icon: "text-rose-500", tag: "bg-rose-100 text-rose-800" },
-    pink: { bg: "bg-pink-50", border: "border-pink-200", text: "text-pink-900", icon: "text-pink-500", tag: "bg-pink-100 text-pink-800" },
-    emerald: { bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-900", icon: "text-emerald-500", tag: "bg-emerald-100 text-emerald-800" },
-    teal: { bg: "bg-teal-50", border: "border-teal-200", text: "text-teal-900", icon: "text-teal-500", tag: "bg-teal-100 text-teal-800" },
-    cyan: { bg: "bg-cyan-50", border: "border-cyan-200", text: "text-cyan-900", icon: "text-cyan-500", tag: "bg-cyan-100 text-cyan-800" },
-    indigo: { bg: "bg-indigo-50", border: "border-indigo-200", text: "text-indigo-900", icon: "text-indigo-500", tag: "bg-indigo-100 text-indigo-800" },
-    violet: { bg: "bg-violet-50", border: "border-violet-200", text: "text-violet-900", icon: "text-violet-500", tag: "bg-violet-100 text-violet-800" },
-    purple: { bg: "bg-purple-50", border: "border-purple-200", text: "text-purple-900", icon: "text-purple-500", tag: "bg-purple-100 text-purple-800" },
-  };
-
-  const theme = colorClasses[themeColor] || colorClasses.amber;
-
-  const renderContent = (content) => {
-    return content.split('\n').map((line, i) => {
-      if (line.startsWith('####')) {
-        return <h4 key={i} className={`font-bold text-lg mt-6 mb-3 ${theme.text}`}>{line.replace(/^####\s*/, '')}</h4>;
-      }
-      if (line.startsWith('* ')) {
-        const cleanLine = line.substring(2);
-        const parts = cleanLine.split(/(\*\*.*?\*\*)/g);
-        return (
-          <div key={i} className="flex items-start gap-2 mb-3 text-sm text-gray-700 pr-2">
-            <span className={`mt-2 w-1.5 h-1.5 rounded-full bg-current opacity-50 shrink-0 ${theme.text}`}></span>
-            <p className="leading-relaxed">
-              {parts.map((part, j) => {
-                if (part.startsWith('**') && part.endsWith('**')) {
-                  return (
-                    <span key={j} className={`font-bold px-1.5 py-0.5 rounded mx-1 text-xs ${theme.tag}`}>
-                      {part.slice(2, -2)}
-                    </span>
-                  );
-                }
-                return part;
-              })}
-            </p>
-          </div>
-        );
-      }
-      if (line.trim() !== '') {
-         const parts = line.split(/(\*\*.*?\*\*)/g);
-         return (
-           <p key={i} className="mb-3 text-sm text-gray-700 leading-relaxed text-justify pr-2">
-             {parts.map((part, j) => {
-                if (part.startsWith('**') && part.endsWith('**')) {
-                   return <strong key={j} className={theme.text}>{part.slice(2, -2)}</strong>;
-                }
-                return part;
-             })}
-           </p>
-         );
-      }
-      return null;
-    });
-  };
-
-  return (
-    <div className={`mt-10 rounded-2xl border-2 ${theme.border} ${theme.bg} p-6 relative overflow-hidden animate-fadeIn shadow-lg`}>
-      <div className="absolute top-0 right-0 p-2 opacity-10 pointer-events-none">
-        <Sparkles size={100} />
-      </div>
-      <div className="flex items-center gap-3 mb-6 pb-3 border-b border-gray-200/50">
-        <div className={`p-2 rounded-xl bg-white shadow-sm`}>
-            <Lightbulb size={24} className={theme.icon} />
-        </div>
-        <span className={`font-black text-xl ${theme.text}`}>موقعیت‌سازی و سناریوی اجرا</span>
-      </div>
-      <div className="space-y-1">
-        {renderContent(text)}
-      </div>
-    </div>
-  );
-};
-
-const LayerParagraphs = ({ title, icon, items, themeColor }) => (
-  <CollapsibleSection 
-    title={
-      <div className={`flex items-center gap-2 text-sm text-${themeColor}-700`}>
-        {icon}
-        <h3>{title}</h3>
-      </div>
-    }
-    defaultOpen={false}
-    className="mb-4"
-  >
-    <div className="leading-8 text-sm text-gray-800">
-      {items.map((item, idx) => (
-        <React.Fragment key={idx}>
-          <div className="inline">
-            <InlineTag text={item.type} themeColor={themeColor} />
-            <span className="ml-1">{item.content}</span>
-          </div>
-          <div className="h-2"></div> 
-        </React.Fragment>
-      ))}
-    </div>
-  </CollapsibleSection>
-);
-
-const DayChapter = ({ dayData, themeColor }) => {
-  return (
-    <div id={`${themeColor}-day-${dayData.day}`} className="border-r-2 border-gray-200 pr-6 mr-2 mb-16 relative scroll-mt-32">
-      <div className={`absolute -right-[9px] top-0 w-4 h-4 rounded-full border-2 border-white shadow-sm bg-${themeColor}-400`}></div>
-      
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
-        <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-          <span>روز {dayData.day}:</span>
-          <span className={`text-${themeColor}-600`}>{dayData.title}</span>
-        </h3>
-        <div className="text-xs font-medium text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full mt-2 md:mt-0 inline-block border border-gray-100">
-           محوریت: {dayData.axis}
-        </div>
-      </div>
-
-      <div className="bg-gray-50 rounded-xl p-4 mb-8 border border-gray-100 italic text-sm text-gray-700 leading-relaxed shadow-sm">
-        <span className="font-bold not-italic">💡 مفهوم کلیدی: </span> 
-        {dayData.concept}
-      </div>
-
-      <div className="space-y-2">
-        <LayerParagraphs 
-          title="لایه اول: بینش (نظام فکری)" 
-          icon={<BookOpen size={16}/>} 
-          items={dayData.layers.insight} 
-          themeColor={themeColor} 
-        />
-        <LayerParagraphs 
-          title="لایه دوم: کُنش (تمرین رفتار)" 
-          icon={<Sun size={16}/>} 
-          items={dayData.layers.action} 
-          themeColor={themeColor} 
-        />
-        <LayerParagraphs 
-          title="لایه سوم: نیایش (اتصال)" 
-          icon={<Heart size={16}/>} 
-          items={dayData.layers.prayer} 
-          themeColor={themeColor} 
-        />
-      </div>
-
-      {dayData.situation && (
-        <SituationCard text={dayData.situation} themeColor={themeColor} />
-      )}
-    </div>
-  );
-};
-
-const GradeChapter = ({ data, isOpen, onToggle }) => {
-  return (
-    <section id={data.id} className="scroll-mt-32 transition-all duration-500">
-      <div 
-        onClick={onToggle}
-        className={`group cursor-pointer py-5 px-3 border-b-2 flex items-center justify-between transition-all duration-300
-          ${isOpen 
-            ? `border-${data.themeColor}-500 opacity-100 bg-white sticky top-16 z-20 shadow-sm` 
-            : 'border-transparent opacity-50 hover:opacity-100 hover:bg-gray-50'}`}
-      >
-        <div className="flex items-center gap-5">
-          <div className={`p-3 rounded-2xl transition-all shadow-sm ${isOpen ? `bg-${data.themeColor}-500 text-white` : `bg-gray-100 text-gray-400 group-hover:bg-gray-200`}`}>
-            {data.icon}
-          </div>
-          <div>
-            <h2 className={`text-2xl font-black ${isOpen ? 'text-gray-900' : 'text-gray-400 group-hover:text-gray-600'}`}>
-              {data.shortTitle}
-            </h2>
-            {isOpen && (
-              <div className="text-xs font-bold text-gray-500 mt-1 flex items-center gap-2">
-                <span className={`px-2 py-0.5 rounded bg-${data.themeColor}-100 text-${data.themeColor}-700`}>{data.groupName}</span>
-                <span>•</span>
-                <span>{data.age}</span>
-              </div>
-            )}
-          </div>
-        </div>
-        {!isOpen && <ChevronLeft className="text-gray-300" />}
-      </div>
-
-      {isOpen && (
-        <div className="pt-8 pb-20 px-3 md:px-5 animate-fadeIn">
-          <CollapsibleSection title="اصول ثابت و فضای حاکم" defaultOpen={false} className="mb-12 border-l-4 border-l-gray-300 bg-white">
-             <div className="grid grid-cols-1 gap-3">
-               {data.principles.map((p, i) => (
-                 <p key={i} className="text-sm text-gray-700 leading-relaxed flex items-start gap-3">
-                   <span className={`mt-2 w-2 h-2 rounded-full bg-${data.themeColor}-400 shrink-0`}></span>
-                   {p}
-                 </p>
-               ))}
-             </div>
-          </CollapsibleSection>
-
-          <div>
-            {data.days.map((day, idx) => (
-              <DayChapter key={idx} dayData={day} themeColor={data.themeColor} />
-            ))}
-          </div>
-          
-          <div className="text-center mt-12 opacity-30">
-            <div className="flex items-center justify-center gap-4">
-                <div className="h-px w-20 bg-gray-400"></div>
-                <span className="text-xs">پایان بخش {data.groupName}</span>
-                <div className="h-px w-20 bg-gray-400"></div>
-            </div>
-          </div>
-        </div>
-      )}
-    </section>
-  );
-};
-
-const Footer = () => (
-  <footer className="bg-slate-50 border-t border-gray-200 mt-20 pb-16 pt-12">
-    <div className="max-w-3xl mx-auto px-6 text-center">
-      <div className="flex justify-center mb-6">
-        <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mb-4 transform rotate-12 shadow-sm">
-           <Heart fill="currentColor" size={28} />
-        </div>
-      </div>
-      <h3 className="font-black text-gray-800 text-xl mb-3 tracking-tight">دخترانِ محیا</h3>
-      <p className="text-gray-500 text-sm mb-10 max-w-sm mx-auto leading-relaxed">این سند تعاملی جهت تسهیل مربی‌گری و انتقال دقیق مفاهیم تربیتی به معتکفین عزیز طراحی شده است.</p>
-      
-      <div className="inline-flex flex-col sm:flex-row items-center gap-4 px-6 py-4 bg-white border border-gray-100 rounded-3xl shadow-xl">
-        <div className="flex items-center gap-2">
-            <MessageCircle size={20} className="text-blue-500" />
-            <span className="text-sm font-bold text-gray-600">ارتباط با ما و ارسال نظرات:</span>
-        </div>
-        <a 
-          href="https://eitaa.com/zalavi68" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="px-5 py-2 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600 transition-all text-sm shadow-md"
-        >
-          کانال ایتا
-        </a>
-      </div>
-    </div>
-  </footer>
-);
-
-const App = () => {
-  const [activeGradeId, setActiveGradeId] = useState('grade2');
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  const scrollToSection = (id) => {
-    setActiveGradeId(id);
-    setTimeout(() => {
-      const element = document.getElementById(id);
-      if (element) {
-        const headerOffset = 180; 
-        const elementPosition = element.getBoundingClientRect().top;
-        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-        window.scrollTo({
-          top: offsetPosition,
-          behavior: "smooth"
-        });
-      }
-    }, 50);
-    setIsMenuOpen(false);
-  };
-
-  const scrollToDay = (gradeId, dayNumber) => {
-    setActiveGradeId(gradeId);
-    setTimeout(() => {
-      const gradeData = gradesData.find(g => g.id === gradeId);
-      if(gradeData) {
-         const dayId = `${gradeData.themeColor}-day-${dayNumber}`;
-         const element = document.getElementById(dayId);
-         if (element) {
-            const headerOffset = 220; 
-            const elementPosition = element.getBoundingClientRect().top;
-            const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-            window.scrollTo({
-              top: offsetPosition,
-              behavior: "smooth"
-            });
-         }
-      }
-    }, 100);
-    setIsMenuOpen(false);
-  };
-
-  return (
-    <div className="min-h-screen bg-white font-sans text-right text-gray-800" dir="rtl">
-      
-      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm transition-all">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
-          
-          <div className="flex items-center justify-between w-full md:w-auto">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-lg shadow-amber-100 rotate-6 transform hover:rotate-0 transition-transform">
-                د
-              </div>
-              <div className="flex flex-col">
-                <span className="font-black text-gray-900 text-lg tracking-tight">دخترانِ محیا</span>
-                <span className="text-[11px] text-gray-400 font-bold">شیوه‌نامه جامع تربیتی اعتکاف</span>
-              </div>
-            </div>
-            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-2xl md:hidden">
-              {isMenuOpen ? <X size={24}/> : <Menu size={24}/>}
-            </button>
-          </div>
-
-          <div className="w-full md:flex-1 overflow-x-auto no-scrollbar pb-1 md:pb-0 flex items-center gap-2 justify-start md:justify-center px-2">
-            {gradesData.map(grade => (
-              <button
-                key={grade.id}
-                onClick={() => scrollToSection(grade.id)}
-                className={`flex-shrink-0 px-5 py-2.5 rounded-2xl text-[13px] font-black transition-all duration-300 border
-                  ${activeGradeId === grade.id 
-                    ? `bg-${grade.themeColor}-500 text-white border-${grade.themeColor}-600 shadow-lg shadow-${grade.themeColor}-100 transform -translate-y-1` 
-                    : 'bg-white text-gray-500 border-gray-100 hover:border-gray-300 hover:bg-gray-50'}`}
-              >
-                {grade.shortTitle}
-              </button>
-            ))}
-          </div>
-
-        </div>
         
-        {activeGradeId && activeGradeId !== 'intro' && (
-           <div className="bg-slate-50 border-b border-gray-100 py-3 animate-slideDown shadow-inner">
-             <div className="max-w-4xl mx-auto px-4 flex justify-center gap-8 text-[13px] font-black text-gray-500">
-               <span className="opacity-40 self-center hidden sm:inline">دسترسی به محتوای روز:</span>
-               {[1, 2, 3].map(d => (
-                 <button 
-                   key={d} 
-                   onClick={() => scrollToDay(activeGradeId, d)}
-                   className="flex items-center gap-2 px-4 py-1.5 rounded-xl hover:bg-white hover:text-gray-900 hover:shadow-sm transition-all border border-transparent hover:border-gray-100"
-                 >
-                   <span className={`w-2 h-2 rounded-full bg-gray-300 animate-pulse`}></span>
-                   روز {d}
-                 </button>
-               ))}
-             </div>
-           </div>
-        )}
-      </header>
-      
-      {isMenuOpen && (
-        <div className="fixed inset-0 z-40 bg-white md:hidden overflow-y-auto pt-28 px-6 pb-10 animate-fadeIn">
-           <h3 className="font-black text-2xl mb-8 text-gray-900 border-b-4 border-amber-400 pb-2 inline-block">فهرست شیوه‌نامه</h3>
-           <div className="space-y-8">
-              <button onClick={() => scrollToSection('intro')} className="block w-full text-right font-black text-xl text-gray-700 hover:text-amber-600 transition-colors">۱. مقدمه و مانیفست تربیتی</button>
-              {gradesData.map(g => (
-                <div key={g.id} className="bg-gray-50 p-4 rounded-3xl">
-                  <button onClick={() => scrollToSection(g.id)} className={`block w-full text-right font-black text-xl mb-4 text-${g.themeColor}-600`}>
-                    {g.shortTitle} <span className="text-xs font-bold text-gray-400">| {g.groupName}</span>
-                  </button>
-                  <div className="flex flex-wrap gap-3 pr-4">
-                    {[1,2,3].map(d => (
-                       <button key={d} onClick={() => scrollToDay(g.id, d)} className="text-sm font-bold bg-white px-5 py-2 rounded-2xl border border-gray-100 text-gray-600 shadow-sm active:scale-95 transition-transform">روز {d}</button>
-                    ))}
-                  </div>
+        // State management
+        let activeGradeId = 'grade2';
+        let isMenuOpen = false;
+        const openSections = new Set();
+        
+        // Helper functions
+        function scrollToSection(id) {
+            activeGradeId = id;
+            setTimeout(() => {
+                const element = document.getElementById(id);
+                if (element) {
+                    const headerOffset = 180;
+                    const elementPosition = element.getBoundingClientRect().top;
+                    const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+                    window.scrollTo({ top: offsetPosition, behavior: "smooth" });
+                }
+            }, 50);
+            isMenuOpen = false;
+            render();
+        }
+        
+        function scrollToDay(gradeId, dayNumber) {
+            activeGradeId = gradeId;
+            setTimeout(() => {
+                const gradeData = gradesData.find(g => g.id === gradeId);
+                if (gradeData) {
+                    const dayId = `${gradeData.themeColor}-day-${dayNumber}`;
+                    const element = document.getElementById(dayId);
+                    if (element) {
+                        const headerOffset = 220;
+                        const elementPosition = element.getBoundingClientRect().top;
+                        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+                        window.scrollTo({ top: offsetPosition, behavior: "smooth" });
+                    }
+                }
+            }, 100);
+            isMenuOpen = false;
+            render();
+        }
+        
+        function toggleSection(sectionId) {
+            if (openSections.has(sectionId)) {
+                openSections.delete(sectionId);
+            } else {
+                openSections.add(sectionId);
+            }
+            render();
+        }
+        
+        function toggleMenu() {
+            isMenuOpen = !isMenuOpen;
+            render();
+        }
+        
+        function toggleGrade(gradeId) {
+            if (activeGradeId === gradeId) {
+                activeGradeId = null;
+            } else {
+                scrollToSection(gradeId);
+            }
+        }
+        
+        // Render functions
+        function renderCollapsibleSection(sectionId, title, content, defaultOpen = false) {
+            const isOpen = openSections.has(sectionId) || defaultOpen;
+            return `
+                <div class="border border-gray-200 rounded-lg overflow-hidden transition-all duration-300 ${isOpen ? 'bg-white shadow-sm' : 'bg-gray-50'}">
+                    <button onclick="toggleSection('${sectionId}')" class="w-full flex items-center justify-between p-3 text-right hover:bg-gray-100 transition-colors">
+                        <div class="font-bold text-gray-800 flex items-center gap-2">${title}</div>
+                        <span class="text-gray-400">${isOpen ? '▲' : '▼'}</span>
+                    </button>
+                    <div class="overflow-hidden transition-all duration-300 ease-in-out ${isOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}">
+                        <div class="p-4 border-t border-gray-100 text-justify">${content}</div>
+                    </div>
                 </div>
-              ))}
-           </div>
-        </div>
-      )}
-
-      <main className="max-w-4xl mx-auto px-6 md:px-12 pt-16">
+            `;
+        }
         
-        <section id="intro" className="mb-24">
-          <div className="text-center mb-16">
-            <h2 className="text-sm font-black text-amber-600 mb-2 tracking-widest uppercase opacity-80">بسم الله الرحمن الرحیم</h2>
-            <h1 className="text-4xl md:text-5xl font-black text-gray-900 mb-6 tracking-tight leading-tight">شیوه‌نامه جامع تربیتی و اجرایی اعتکاف دانش‌آموزی</h1>
-            <p className="text-2xl font-bold text-gray-400 mb-8 italic">«دخترانِ محیا»</p>
-            <div className="w-20 h-1.5 bg-amber-400 mx-auto rounded-full shadow-sm"></div>
-          </div>
-          
-          <div className="space-y-6">
-             {manifestoData.content.map((sec, i) => (
-               <CollapsibleSection 
-                 key={i} 
-                 title={sec.title} 
-                 defaultOpen={false}
-                 className="shadow-sm border-gray-100"
-               >
-                 <p className="leading-9 text-gray-700 whitespace-pre-wrap text-[15px]">{sec.text}</p>
-               </CollapsibleSection>
-             ))}
-          </div>
-        </section>
-
-        <div className="flex items-center gap-6 mb-16">
-           <div className="h-px bg-gray-200 flex-1"></div>
-           <span className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] bg-white px-6 py-2 border border-gray-100 rounded-full shadow-sm">بخش‌های اختصاصی بر اساس پایه تحصیلی</span>
-           <div className="h-px bg-gray-200 flex-1"></div>
-        </div>
-
-        <div className="space-y-6">
-          {gradesData.map(grade => (
-            <GradeChapter 
-              key={grade.id} 
-              data={grade} 
-              isOpen={activeGradeId === grade.id}
-              onToggle={() => {
-                if(activeGradeId === grade.id) {
-                   setActiveGradeId(null);
-                } else {
-                   scrollToSection(grade.id);
-                }
-              }}
-            />
-          ))}
-        </div>
-
-      </main>
-
-      <Footer />
-    </div>
-  );
-};
-
-export default App;
+        function renderSituationCard(text, themeColor = 'amber') {
+            if (!text) return '';
+            
+            const colorClasses = {
+                amber: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-900' },
+                rose: { bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-900' },
+                pink: { bg: 'bg-pink-50', border: 'border-pink-200', text: 'text-pink-900' },
+                emerald: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-900' },
+                teal: { bg: 'bg-teal-50', border: 'border-teal-200', text: 'text-teal-900' },
+                cyan: { bg: 'bg-cyan-50', border: 'border-cyan-200', text: 'text-cyan-900' },
+                indigo: { bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-900' },
+                violet: { bg: 'bg-violet-50', border: 'border-violet-200', text: 'text-violet-900' },
+                purple: { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-900' },
+            };
+            
+            const theme = colorClasses[themeColor] || colorClasses.amber;
+            
+            // تبدیل markdown به HTML
+            let html = text
+                .replace(/####\s+(.+)/g, '<h4 class="font-bold text-lg mt-6 mb-3 ' + theme.text + '">$1</h4>')
+                .replace(/\*\*([^*]+)\*\*/g, '<strong class="' + theme.text + '">$1</strong>')
+                .replace(/\*\s+(.+)/g, '<div class="flex items-start gap-2 mb-3 text-sm text-gray-700 pr-2"><span class="mt-2 w-1.5 h-1.5 rounded-full bg-current opacity-50 shrink-0 ' + theme.text + '"></span><p class="leading-relaxed">$1</p></div>')
+                .replace(/\n/g, '<br>');
+            
+            return `
+                <div class="mt-10 rounded-2xl border-2 ${theme.border} ${theme.bg} p-6 relative overflow-hidden animate-fadeIn shadow-lg">
+                    <div class="flex items-center gap-3 mb-6 pb-3 border-b border-gray-200/50">
+                        <div class="p-2 rounded-xl bg-white shadow-sm">💡</div>
+                        <span class="font-black text-xl ${theme.text}">موقعیت‌سازی و سناریوی اجرا</span>
+                    </div>
+                    <div class="space-y-1">${html}</div>
+                </div>
+            `;
+        }
+        
+        function renderLayerParagraphs(title, icon, items, themeColor, sectionId) {
+            const isOpen = openSections.has(sectionId);
+            const colorMap = {
+                rose: 'bg-rose-100 text-rose-800',
+                pink: 'bg-pink-100 text-pink-800',
+                emerald: 'bg-emerald-100 text-emerald-800',
+                teal: 'bg-teal-100 text-teal-800',
+                cyan: 'bg-cyan-100 text-cyan-800',
+                indigo: 'bg-indigo-100 text-indigo-800',
+                violet: 'bg-violet-100 text-violet-800',
+                purple: 'bg-purple-100 text-purple-800',
+            };
+            
+            let itemsHtml = items.map(item => `
+                <div class="inline">
+                    <span class="inline-block px-1.5 py-0.5 mx-1 rounded text-[11px] font-bold tracking-tight align-baseline ${colorMap[themeColor] || 'bg-gray-100 text-gray-800'}">${item.type}</span>
+                    <span class="ml-1">${item.content}</span>
+                </div>
+                <div class="h-2"></div>
+            `).join('');
+            
+            return renderCollapsibleSection(
+                sectionId,
+                `<div class="flex items-center gap-2 text-sm text-${themeColor}-700">${icon} <h3>${title}</h3></div>`,
+                `<div class="leading-8 text-sm text-gray-800">${itemsHtml}</div>`,
+                false
+            );
+        }
+        
+        function renderDayChapter(dayData, themeColor, gradeId) {
+            const dayId = `${themeColor}-day-${dayData.day}`;
+            const insightId = `${gradeId}-day${dayData.day}-insight`;
+            const actionId = `${gradeId}-day${dayData.day}-action`;
+            const prayerId = `${gradeId}-day${dayData.day}-prayer`;
+            
+            return `
+                <div id="${dayId}" class="border-r-2 border-gray-200 pr-6 mr-2 mb-16 relative scroll-mt-32">
+                    <div class="absolute -right-[9px] top-0 w-4 h-4 rounded-full border-2 border-white shadow-sm bg-${themeColor}-400"></div>
+                    
+                    <div class="flex flex-col md:flex-row md:items-center justify-between mb-4">
+                        <h3 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                            <span>روز ${dayData.day}:</span>
+                            <span class="text-${themeColor}-600">${dayData.title}</span>
+                        </h3>
+                        <div class="text-xs font-medium text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full mt-2 md:mt-0 inline-block border border-gray-100">
+                            محوریت: ${dayData.axis}
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gray-50 rounded-xl p-4 mb-8 border border-gray-100 italic text-sm text-gray-700 leading-relaxed shadow-sm">
+                        <span class="font-bold not-italic">💡 مفهوم کلیدی: </span>
+                        ${dayData.concept}
+                    </div>
+                    
+                    <div class="space-y-2">
+                        ${renderLayerParagraphs('لایه اول: بینش (نظام فکری)', '📖', dayData.layers.insight, themeColor, insightId)}
+                        ${renderLayerParagraphs('لایه دوم: کُنش (تمرین رفتار)', '☀️', dayData.layers.action, themeColor, actionId)}
+                        ${renderLayerParagraphs('لایه سوم: نیایش (اتصال)', '❤️', dayData.layers.prayer, themeColor, prayerId)}
+                    </div>
+                    
+                    ${dayData.situation ? renderSituationCard(dayData.situation, themeColor) : ''}
+                </div>
+            `;
+        }
+        
+        function renderGradeChapter(grade) {
+            const isOpen = activeGradeId === grade.id;
+            
+            return `
+                <section id="${grade.id}" class="scroll-mt-32 transition-all duration-500">
+                    <div onclick="toggleGrade('${grade.id}')" class="group cursor-pointer py-5 px-3 border-b-2 flex items-center justify-between transition-all duration-300 ${isOpen ? 'border-' + grade.themeColor + '-500 opacity-100 bg-white sticky top-16 z-20 shadow-sm' : 'border-transparent opacity-50 hover:opacity-100 hover:bg-gray-50'}">
+                        <div class="flex items-center gap-5">
+                            <div class="p-3 rounded-2xl transition-all shadow-sm ${isOpen ? 'bg-' + grade.themeColor + '-500 text-white' : 'bg-gray-100 text-gray-400 group-hover:bg-gray-200'}">
+                                ${grade.icon || '●'}
+                            </div>
+                            <div>
+                                <h2 class="text-2xl font-black ${isOpen ? 'text-gray-900' : 'text-gray-400 group-hover:text-gray-600'}">
+                                    ${grade.shortTitle}
+                                </h2>
+                                ${isOpen ? `
+                                    <div class="text-xs font-bold text-gray-500 mt-1 flex items-center gap-2">
+                                        <span class="px-2 py-0.5 rounded bg-${grade.themeColor}-100 text-${grade.themeColor}-700">${grade.groupName}</span>
+                                        <span>•</span>
+                                        <span>${grade.age}</span>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                        ${!isOpen ? '<span class="text-gray-300">◄</span>' : ''}
+                    </div>
+                    
+                    ${isOpen ? `
+                        <div class="pt-8 pb-20 px-3 md:px-5 animate-fadeIn">
+                            ${renderCollapsibleSection(
+                                `${grade.id}-principles`,
+                                'اصول ثابت و فضای حاکم',
+                                `<div class="grid grid-cols-1 gap-3">${grade.principles.map(p => `<p class="text-sm text-gray-700 leading-relaxed flex items-start gap-3"><span class="mt-2 w-2 h-2 rounded-full bg-${grade.themeColor}-400 shrink-0"></span>${p}</p>`).join('')}</div>`,
+                                false
+                            )}
+                            
+                            <div>
+                                ${grade.days.map((day, idx) => renderDayChapter(day, grade.themeColor, grade.id)).join('')}
+                            </div>
+                            
+                            <div class="text-center mt-12 opacity-30">
+                                <div class="flex items-center justify-center gap-4">
+                                    <div class="h-px w-20 bg-gray-400"></div>
+                                    <span class="text-xs">پایان بخش ${grade.groupName}</span>
+                                    <div class="h-px w-20 bg-gray-400"></div>
+                                </div>
+                            </div>
+                        </div>
+                    ` : ''}
+                </section>
+            `;
+        }
+        
+        function render() {
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm transition-all">
+                    <div class="max-w-5xl mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div class="flex items-center justify-between w-full md:w-auto">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-lg shadow-amber-100 rotate-6 transform hover:rotate-0 transition-transform">د</div>
+                                <div class="flex flex-col">
+                                    <span class="font-black text-gray-900 text-lg tracking-tight">دخترانِ محیا</span>
+                                    <span class="text-[11px] text-gray-400 font-bold">شیوه‌نامه جامع تربیتی اعتکاف</span>
+                                </div>
+                            </div>
+                            <button onclick="toggleMenu()" class="p-2 text-gray-500 hover:bg-gray-100 rounded-2xl md:hidden">
+                                ${isMenuOpen ? '✕' : '☰'}
+                            </button>
+                        </div>
+                        
+                        <div class="w-full md:flex-1 overflow-x-auto no-scrollbar pb-1 md:pb-0 flex items-center gap-2 justify-start md:justify-center px-2">
+                            ${gradesData.map(grade => `
+                                <button onclick="scrollToSection('${grade.id}')" class="flex-shrink-0 px-5 py-2.5 rounded-2xl text-[13px] font-black transition-all duration-300 border ${activeGradeId === grade.id ? 'bg-' + grade.themeColor + '-500 text-white border-' + grade.themeColor + '-600 shadow-lg shadow-' + grade.themeColor + '-100 transform -translate-y-1' : 'bg-white text-gray-500 border-gray-100 hover:border-gray-300 hover:bg-gray-50'}">
+                                    ${grade.shortTitle}
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                    
+                    ${activeGradeId && activeGradeId !== 'intro' ? `
+                        <div class="bg-slate-50 border-b border-gray-100 py-3 animate-slideDown shadow-inner">
+                            <div class="max-w-4xl mx-auto px-4 flex justify-center gap-8 text-[13px] font-black text-gray-500">
+                                <span class="opacity-40 self-center hidden sm:inline">دسترسی به محتوای روز:</span>
+                                ${[1, 2, 3].map(d => `
+                                    <button onclick="scrollToDay('${activeGradeId}', ${d})" class="flex items-center gap-2 px-4 py-1.5 rounded-xl hover:bg-white hover:text-gray-900 hover:shadow-sm transition-all border border-transparent hover:border-gray-100">
+                                        <span class="w-2 h-2 rounded-full bg-gray-300 animate-pulse"></span>
+                                        روز ${d}
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                </header>
+                
+                ${isMenuOpen ? `
+                    <div class="fixed inset-0 z-40 bg-white md:hidden overflow-y-auto pt-28 px-6 pb-10 animate-fadeIn">
+                        <h3 class="font-black text-2xl mb-8 text-gray-900 border-b-4 border-amber-400 pb-2 inline-block">فهرست شیوه‌نامه</h3>
+                        <div class="space-y-8">
+                            <button onclick="scrollToSection('intro')" class="block w-full text-right font-black text-xl text-gray-700 hover:text-amber-600 transition-colors">۱. مقدمه و مانیفست تربیتی</button>
+                            ${gradesData.map(g => `
+                                <div class="bg-gray-50 p-4 rounded-3xl">
+                                    <button onclick="scrollToSection('${g.id}')" class="block w-full text-right font-black text-xl mb-4 text-${g.themeColor}-600">
+                                        ${g.shortTitle} <span class="text-xs font-bold text-gray-400">| ${g.groupName}</span>
+                                    </button>
+                                    <div class="flex flex-wrap gap-3 pr-4">
+                                        ${[1,2,3].map(d => `
+                                            <button onclick="scrollToDay('${g.id}', ${d})" class="text-sm font-bold bg-white px-5 py-2 rounded-2xl border border-gray-100 text-gray-600 shadow-sm active:scale-95 transition-transform">روز ${d}</button>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <main class="max-w-4xl mx-auto px-6 md:px-12 pt-16">
+                    <section id="intro" class="mb-24">
+                        <div class="text-center mb-16">
+                            <h2 class="text-sm font-black text-amber-600 mb-2 tracking-widest uppercase opacity-80">بسم الله الرحمن الرحیم</h2>
+                            <h1 class="text-4xl md:text-5xl font-black text-gray-900 mb-6 tracking-tight leading-tight">شیوه‌نامه جامع تربیتی و اجرایی اعتکاف دانش‌آموزی</h1>
+                            <p class="text-2xl font-bold text-gray-400 mb-8 italic">«دخترانِ محیا»</p>
+                            <div class="w-20 h-1.5 bg-amber-400 mx-auto rounded-full shadow-sm"></div>
+                        </div>
+                        
+                        <div class="space-y-6">
+                            ${manifestoData.content.map((sec, i) => renderCollapsibleSection(
+                                `intro-${i}`,
+                                sec.title,
+                                `<p class="leading-9 text-gray-700 whitespace-pre-wrap text-[15px]">${sec.text}</p>`,
+                                false
+                            )).join('')}
+                        </div>
+                    </section>
+                    
+                    <div class="flex items-center gap-6 mb-16">
+                        <div class="h-px bg-gray-200 flex-1"></div>
+                        <span class="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] bg-white px-6 py-2 border border-gray-100 rounded-full shadow-sm">بخش‌های اختصاصی بر اساس پایه تحصیلی</span>
+                        <div class="h-px bg-gray-200 flex-1"></div>
+                    </div>
+                    
+                    <div class="space-y-6">
+                        ${gradesData.map(grade => renderGradeChapter(grade)).join('')}
+                    </div>
+                </main>
+                
+                <footer class="bg-slate-50 border-t border-gray-200 mt-20 pb-16 pt-12">
+                    <div class="max-w-3xl mx-auto px-6 text-center">
+                        <div class="flex justify-center mb-6">
+                            <div class="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mb-4 transform rotate-12 shadow-sm">❤️</div>
+                        </div>
+                        <h3 class="font-black text-gray-800 text-xl mb-3 tracking-tight">دخترانِ محیا</h3>
+                        <p class="text-gray-500 text-sm mb-10 max-w-sm mx-auto leading-relaxed">این سند تعاملی جهت تسهیل مربی‌گری و انتقال دقیق مفاهیم تربیتی به معتکفین عزیز طراحی شده است.</p>
+                        
+                        <div class="inline-flex flex-col sm:flex-row items-center gap-4 px-6 py-4 bg-white border border-gray-100 rounded-3xl shadow-xl">
+                            <div class="flex items-center gap-2">
+                                <span>💬</span>
+                                <span class="text-sm font-bold text-gray-600">ارتباط با ما و ارسال نظرات:</span>
+                            </div>
+                            <a href="https://eitaa.com/zalavi68" target="_blank" rel="noopener noreferrer" class="px-5 py-2 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600 transition-all text-sm shadow-md">
+                                کانال ایتا
+                            </a>
+                        </div>
+                    </div>
+                </footer>
+            `;
+        }
+        
+        // Initialize
+        render();
+    </script>
+</body>
+</html>

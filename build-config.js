@@ -16,6 +16,7 @@ require('dotenv').config();
 const apiKey = process.env.API_KEY || '';
 const baseUrl = process.env.BASE_URL || 'https://selfclaude.flearning.ir/';
 const apiEndpoint = process.env.API_ENDPOINT || 'chat/completions';
+const promptsUrl = process.env.PROMPTS_URL || '';
 
 // محتوای فایل config.js
 const configContent = `// فایل تنظیمات API - به صورت خودکار از .env تولید شده
@@ -24,7 +25,8 @@ const configContent = `// فایل تنظیمات API - به صورت خودکا
 window.APP_CONFIG = {
     apiKey: "${apiKey}",
     baseUrl: "${baseUrl}",
-    apiEndpoint: "${apiEndpoint}"
+    apiEndpoint: "${apiEndpoint}",
+    promptsUrl: "${promptsUrl}"
 };
 `;
 
