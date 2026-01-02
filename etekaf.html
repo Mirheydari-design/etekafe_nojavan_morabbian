@@ -137,8 +137,13 @@
 
         // --- SAFE API CALLER ---
         async function callGemini(userPrompt, systemInstruction) {
+            console.log("🔵 [AI Request] Starting API call...");
+            console.log("📍 API Key configured:", !!apiKey);
+            console.log("📍 Base URL:", baseUrl);
+            console.log("📍 API Endpoint:", apiEndpoint);
+            
             if (!apiKey) {
-                console.warn("API key not configured.");
+                console.warn("⚠️ [AI Request] API key not configured - using dummy response");
                 await new Promise(r => setTimeout(r, 600));
                 return JSON.stringify({
                     diagnosis: "حالت تمرینی: عدم دسترسی به شبکه",
@@ -152,6 +157,7 @@
 
             // ساخت URL کامل
             const url = `${baseUrl}${apiEndpoint}`.replace(/\/+/g, '/').replace(/^https?:\//, 'https://');
+            console.log("🌐 [AI Request] Full URL:", url);
             
             // فرمت درخواست برای API جدید (مشابه Claude/ChatGPT)
             const payload = {
@@ -160,10 +166,13 @@
                     { role: "user", content: userPrompt }
                 ]
             };
+            console.log("📦 [AI Request] Payload:", JSON.stringify(payload).substring(0, 200) + "...");
 
             const delays = [1000, 2000, 4000];
             for (let i = 0; i <= delays.length; i++) {
                 try {
+                    console.log(`🔄 [AI Request] Attempt ${i + 1}/${delays.length + 1}`);
+                    
                     const response = await fetch(url, {
                         method: 'POST',
                         headers: { 
@@ -175,13 +184,16 @@
                         body: JSON.stringify(payload)
                     });
                     
+                    console.log("📡 [AI Response] Status:", response.status, response.statusText);
+                    
                     if (!response.ok) {
                         const errorText = await response.text();
-                        console.error('API Error:', response.status, errorText);
+                        console.error('❌ [AI Response] API Error:', response.status, errorText);
                         throw new Error(`HTTP Error: ${response.status} - ${errorText}`);
                     }
                     
                     const data = await response.json();
+                    console.log("📥 [AI Response] Data received:", JSON.stringify(data).substring(0, 300) + "...");
                     
                     // تلاش برای خواندن پاسخ در فرمت‌های مختلف
                     const responseText = data.choices?.[0]?.message?.content || 
@@ -192,12 +204,15 @@
                                        (data.choices && data.choices[0]?.text) ||
                                        JSON.stringify(data);
                     
+                    console.log("✅ [AI Response] Extracted text:", responseText.substring(0, 200) + "...");
                     return responseText;
                 } catch (error) {
+                    console.error(`❌ [AI Request] Attempt ${i + 1} failed:`, error);
                     if (i === delays.length) {
-                        console.error("API Failure:", error);
+                        console.error("❌ [AI Request] All attempts failed. Final error:", error);
                         throw error;
                     }
+                    console.log(`⏳ [AI Request] Waiting ${delays[i]}ms before retry...`);
                     await new Promise(r => setTimeout(r, delays[i]));
                 }
             }
@@ -250,15 +265,22 @@
         let fetchPromptsPromise = null; // Promise برای fetch
         
         async function fetchPromptsFromUrl() {
+            console.log("📊 [Google Sheet] Starting to fetch prompts from Google Sheet...");
+            
             const promptsUrl = config.promptsUrl;
+            console.log("📍 [Google Sheet] Prompts URL:", promptsUrl);
+            
             if (!promptsUrl) {
-                console.log('No prompts URL configured, using defaults');
+                console.log('⚠️ [Google Sheet] No prompts URL configured, using defaults');
                 return Promise.resolve();
             }
 
             try {
                 // اضافه کردن timestamp برای جلوگیری از cache
                 const urlWithCacheBuster = `${promptsUrl}?t=${Date.now()}`;
+                console.log("🌐 [Google Sheet] Full URL with cache buster:", urlWithCacheBuster);
+                console.log("🔄 [Google Sheet] Fetching data...");
+                
                 const response = await fetch(urlWithCacheBuster, {
                     cache: 'no-cache',
                     headers: {
@@ -267,10 +289,16 @@
                         'Expires': '0'
                     }
                 });
+                
+                console.log("📡 [Google Sheet] Response status:", response.status, response.statusText);
+                
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
+                
                 const sheetData = await response.json();
+                console.log("📥 [Google Sheet] Data received. Array length:", sheetData.length);
+                console.log("📄 [Google Sheet] Full data:", JSON.stringify(sheetData, null, 2));
                 
                 // تبدیل <br> به خط جدید
                 const convertBrToNewline = (text) => {
@@ -281,74 +309,118 @@
                 // OpenSheet یک آرایه از اشیاء برمی‌گرداند
                 // هر ردیف یک شیء است با فیلدهای type, mentorProtocol, profileAnalysis
                 if (Array.isArray(sheetData) && sheetData.length > 0) {
+                    console.log("✅ [Google Sheet] Valid array received with", sheetData.length, "rows");
+                    
+                    // نمایش تمام type ها برای دیباگ
+                    console.log("🔍 [Google Sheet] All row types:", sheetData.map((row, idx) => `Row ${idx}: "${row.type}"`).join(', '));
+                    
                     // پیدا کردن ردیف با type = "System Instruction" (case-insensitive)
                     const systemInstructionRow = sheetData.find(row => 
                         row.type && String(row.type).trim().toLowerCase() === 'system instruction'
                     );
                     
                     if (systemInstructionRow) {
+                        console.log("✅ [Google Sheet] Found 'System Instruction' row");
+                        console.log("📋 [Google Sheet] Row data:", {
+                            type: systemInstructionRow.type,
+                            hasMentorProtocol: !!systemInstructionRow.mentorProtocol,
+                            hasProfileAnalysis: !!systemInstructionRow.profileAnalysis,
+                            mentorProtocolLength: systemInstructionRow.mentorProtocol?.length || 0,
+                            profileAnalysisLength: systemInstructionRow.profileAnalysis?.length || 0
+                        });
+                        
                         let updated = false;
                         // به‌روزرسانی دستورالعمل‌ها
                         if (systemInstructionRow.mentorProtocol) {
-                            state.prompts.mentorProtocol = convertBrToNewline(systemInstructionRow.mentorProtocol);
+                            const converted = convertBrToNewline(systemInstructionRow.mentorProtocol);
+                            console.log("📝 [Google Sheet] Updating mentorProtocol. Preview:", converted.substring(0, 100) + "...");
+                            state.prompts.mentorProtocol = converted;
                             updated = true;
                         }
                         if (systemInstructionRow.profileAnalysis) {
-                            state.prompts.profileAnalysis = convertBrToNewline(systemInstructionRow.profileAnalysis);
+                            const converted = convertBrToNewline(systemInstructionRow.profileAnalysis);
+                            console.log("📝 [Google Sheet] Updating profileAnalysis. Preview:", converted.substring(0, 100) + "...");
+                            state.prompts.profileAnalysis = converted;
                             updated = true;
                         }
                         
                         if (updated) {
                             // ذخیره در localStorage
                             saveData();
-                            console.log('✅ Prompts fetched and updated successfully from Google Sheet');
+                            console.log('✅ [Google Sheet] Prompts updated and saved to localStorage successfully!');
                             // اگر modal تنظیمات باز است، آن را به‌روزرسانی کن
                             const modalCard = document.getElementById('modal-card');
                             if (modalCard && modalCard.innerHTML.includes('set-prompt-main')) {
+                                console.log('🔄 [Google Sheet] Refreshing settings modal...');
                                 openSettingsModal();
                             }
+                        } else {
+                            console.log('⚠️ [Google Sheet] No fields to update in System Instruction row');
                         }
                     } else {
+                        console.warn('⚠️ [Google Sheet] System Instruction row not found, trying first row...');
                         // اگر ردیف System Instruction پیدا نشد، سعی می‌کنیم از اولین ردیف استفاده کنیم
                         const firstRow = sheetData[0];
+                        console.log("📋 [Google Sheet] First row data:", {
+                            type: firstRow.type,
+                            hasMentorProtocol: !!firstRow.mentorProtocol,
+                            hasProfileAnalysis: !!firstRow.profileAnalysis
+                        });
+                        
                         if (firstRow && (firstRow.mentorProtocol || firstRow.profileAnalysis)) {
                             let updated = false;
                             if (firstRow.mentorProtocol) {
-                                state.prompts.mentorProtocol = convertBrToNewline(firstRow.mentorProtocol);
+                                const converted = convertBrToNewline(firstRow.mentorProtocol);
+                                console.log("📝 [Google Sheet] Updating mentorProtocol from first row. Preview:", converted.substring(0, 100) + "...");
+                                state.prompts.mentorProtocol = converted;
                                 updated = true;
                             }
                             if (firstRow.profileAnalysis) {
-                                state.prompts.profileAnalysis = convertBrToNewline(firstRow.profileAnalysis);
+                                const converted = convertBrToNewline(firstRow.profileAnalysis);
+                                console.log("📝 [Google Sheet] Updating profileAnalysis from first row. Preview:", converted.substring(0, 100) + "...");
+                                state.prompts.profileAnalysis = converted;
                                 updated = true;
                             }
                             if (updated) {
                                 saveData();
-                                console.log('⚠️ System Instruction row not found, used first row instead');
+                                console.log('✅ [Google Sheet] Prompts updated from first row and saved to localStorage');
                                 // اگر modal تنظیمات باز است، آن را به‌روزرسانی کن
                                 const modalCard = document.getElementById('modal-card');
                                 if (modalCard && modalCard.innerHTML.includes('set-prompt-main')) {
+                                    console.log('🔄 [Google Sheet] Refreshing settings modal...');
                                     openSettingsModal();
                                 }
                             }
                         } else {
-                            console.warn('❌ System Instruction row not found and first row is invalid');
+                            console.error('❌ [Google Sheet] System Instruction row not found and first row is invalid');
                         }
                     }
                 } else {
-                    console.warn('❌ Invalid sheet data format - expected array');
+                    console.error('❌ [Google Sheet] Invalid sheet data format - expected array but got:', typeof sheetData);
+                    console.error('❌ [Google Sheet] Data:', sheetData);
                 }
             } catch (error) {
-                console.warn('Failed to fetch prompts from URL, using defaults:', error);
+                console.error('❌ [Google Sheet] Failed to fetch prompts from URL:', error);
+                console.error('❌ [Google Sheet] Error details:', error.message);
+                console.error('❌ [Google Sheet] Error stack:', error.stack);
+                console.warn('⚠️ [Google Sheet] Using default prompts instead');
             }
         }
 
         // بارگذاری دستورالعمل‌ها در هنگام لود صفحه
+        console.log("🚀 [App Init] Application starting - fetching prompts from Google Sheet...");
         fetchPromptsPromise = fetchPromptsFromUrl(); 
 
         function saveData() {
+            console.log("💾 [Save Data] Saving data to localStorage...");
             localStorage.setItem('prompts', JSON.stringify(state.prompts));
             localStorage.setItem('schedule', JSON.stringify(state.schedule));
             localStorage.setItem('profiles', JSON.stringify(state.profiles));
+            console.log("✅ [Save Data] Data saved successfully");
+            console.log("📊 [Save Data] Prompts preview:", {
+                mentorProtocol: state.prompts.mentorProtocol?.substring(0, 80) + "...",
+                profileAnalysis: state.prompts.profileAnalysis?.substring(0, 80) + "..."
+            });
         }
 
         function toPersianDigits(input) {
@@ -622,34 +694,47 @@
 
         // --- CORE LOGIC ---
         async function generateProtocol() {
-            // منتظر بمان تا fetch کامل شود
-            if (fetchPromptsPromise) {
-                await fetchPromptsPromise;
-            }
+            console.log("🚀 [Generate Protocol] Function called");
             
-            // اطمینان از اینکه state به‌روز است (از localStorage بخوان)
-            const savedPrompts = JSON.parse(localStorage.getItem('prompts'));
-            if (savedPrompts) {
-                state.prompts = savedPrompts;
-            }
-            
-            const inputEl = document.getElementById('mentor-input');
-            const input = inputEl ? inputEl.value : '';
-            if (!input.trim()) return showToast('لطفا ابتدا دغدغه خود را بنویسید');
-
-            const btnText = document.getElementById('btn-text');
-            const btnLoader = document.getElementById('btn-loader');
-            const outputArea = document.getElementById('result-area');
-            const aiOutput = document.getElementById('ai-output');
-
-            if (btnText) btnText.classList.add('hidden');
-            if (btnLoader) btnLoader.classList.remove('hidden');
-            if (outputArea) outputArea.classList.add('hidden');
-
             try {
+                // منتظر بمان تا fetch کامل شود
+                if (fetchPromptsPromise) {
+                    console.log("⏳ [Generate Protocol] Waiting for prompts to load...");
+                    await fetchPromptsPromise;
+                    console.log("✅ [Generate Protocol] Prompts loaded");
+                }
+                
+                // اطمینان از اینکه state به‌روز است (از localStorage بخوان)
+                const savedPrompts = JSON.parse(localStorage.getItem('prompts'));
+                if (savedPrompts) {
+                    state.prompts = savedPrompts;
+                    console.log("📝 [Generate Protocol] Prompts loaded from localStorage");
+                }
+                
+                const inputEl = document.getElementById('mentor-input');
+                const input = inputEl ? inputEl.value : '';
+                console.log("📝 [Generate Protocol] User input:", input);
+                
+                if (!input.trim()) {
+                    console.log("⚠️ [Generate Protocol] Empty input - showing toast");
+                    return showToast('لطفا ابتدا دغدغه خود را بنویسید');
+                }
+
+                const btnText = document.getElementById('btn-text');
+                const btnLoader = document.getElementById('btn-loader');
+                const outputArea = document.getElementById('result-area');
+                const aiOutput = document.getElementById('ai-output');
+
+                console.log("🔄 [Generate Protocol] Updating UI - showing loader");
+                if (btnText) btnText.classList.add('hidden');
+                if (btnLoader) btnLoader.classList.remove('hidden');
+                if (outputArea) outputArea.classList.add('hidden');
+
                 const timeNow = getCurrentTime();
                 const currentEvent = getCurrentEvent();
                 const safeProfiles = state.profiles.map(p => ({ name: p.name, age: p.age, recent_log: (p.logs && p.logs.length) ? p.logs[p.logs.length-1]?.note : "بدون ثبت" }));
+
+                console.log("📋 [Generate Protocol] Context:", { time: timeNow, event: currentEvent?.title, profiles: safeProfiles.length });
 
                 const userPrompt = `
                     Current Context:
@@ -659,79 +744,104 @@
                     - Students: ${JSON.stringify(safeProfiles)}
                 `;
 
+                console.log("🤖 [Generate Protocol] Calling AI...");
                 const rawText = await callGemini(userPrompt, state.prompts.mentorProtocol);
+                console.log("✅ [Generate Protocol] AI response received");
 
                 let result;
                 try {
                     let clean = String(rawText).replace(/```json\n?|```/g, '').trim();
                     result = typeof clean === 'string' ? JSON.parse(clean) : clean;
+                    console.log("✅ [Generate Protocol] JSON parsed successfully:", result);
                 } catch (e) {
+                    console.error("❌ [Generate Protocol] JSON parse error:", e);
+                    console.log("📄 [Generate Protocol] Raw text:", rawText);
                     result = { diagnosis: "خطا در فرمت خروجی", action: String(rawText), ammo: "...", targeting: "..." };
                 }
-
-                const html = `
-                    <div class="protocol-card border-amber-500">
-                        <div class="bg-amber-50 p-4 font-bold text-amber-800 text-sm flex items-center gap-2.5 border-b border-amber-100">
-                            <span class="text-xl">🩺</span> تشخیص و ریشه‌یابی
-                        </div>
-                        <div class="p-5 text-sm leading-8 text-slate-700 bg-white">${escapeHtml(String(result.diagnosis || '—'))}</div>
-                    </div>
-                    <div class="protocol-card border-emerald-500">
-                        <div class="bg-emerald-50 p-4 font-bold text-emerald-800 text-sm flex items-center gap-2.5 border-b border-emerald-100">
-                            <span class="text-xl">⚡</span> اقدام جهادی فوری
-                        </div>
-                        <div class="p-5 text-sm leading-8 text-slate-700 bg-white">${escapeHtml(String(result.action || '—'))}</div>
-                    </div>
-                    <div class="protocol-card border-cyan-500">
-                        <div class="bg-cyan-50 p-4 font-bold text-cyan-800 text-sm flex items-center gap-2.5 border-b border-cyan-100">
-                            <span class="text-xl">💎</span> رزق معنوی (حدیث/نکته)
-                        </div>
-                        <div class="p-5 text-sm leading-8 text-slate-700 bg-cyan-50/20 italic">"${escapeHtml(String(result.ammo || '—'))}"</div>
-                    </div>
-                    <div class="protocol-card border-rose-500">
-                        <div class="bg-rose-50 p-4 font-bold text-rose-800 text-sm flex items-center gap-2.5 border-b border-rose-100">
-                            <span class="text-xl">🎯</span> تقسیم سنگر (مسئولیت‌ها)
-                        </div>
-                        <div class="p-5 text-sm leading-8 text-slate-700 bg-white">${escapeHtml(String(result.targeting || '—'))}</div>
-                    </div>
-                `;
-
-                if (aiOutput) aiOutput.innerHTML = html;
-                if (outputArea) {
-                    outputArea.classList.remove('hidden');
-                    outputArea.scrollIntoView({ behavior: 'smooth' });
-                }
-
             } catch (error) {
-                console.error(error);
+                console.error("❌ [Generate Protocol] Fatal error:", error);
+                console.error("❌ [Generate Protocol] Error stack:", error.stack);
                 showToast('خطا در ارتباط با خادم هوشمند.');
-            } finally {
+                
+                const btnText = document.getElementById('btn-text');
+                const btnLoader = document.getElementById('btn-loader');
                 if (btnText) btnText.classList.remove('hidden');
                 if (btnLoader) btnLoader.classList.add('hidden');
+                return;
             }
+
+            console.log("🎨 [Generate Protocol] Rendering results...");
+            const html = `
+                <div class="protocol-card border-amber-500">
+                    <div class="bg-amber-50 p-4 font-bold text-amber-800 text-sm flex items-center gap-2.5 border-b border-amber-100">
+                        <span class="text-xl">🩺</span> تشخیص و ریشه‌یابی
+                    </div>
+                    <div class="p-5 text-sm leading-8 text-slate-700 bg-white">${escapeHtml(String(result.diagnosis || '—'))}</div>
+                </div>
+                <div class="protocol-card border-emerald-500">
+                    <div class="bg-emerald-50 p-4 font-bold text-emerald-800 text-sm flex items-center gap-2.5 border-b border-emerald-100">
+                        <span class="text-xl">⚡</span> اقدام جهادی فوری
+                    </div>
+                    <div class="p-5 text-sm leading-8 text-slate-700 bg-white">${escapeHtml(String(result.action || '—'))}</div>
+                </div>
+                <div class="protocol-card border-cyan-500">
+                    <div class="bg-cyan-50 p-4 font-bold text-cyan-800 text-sm flex items-center gap-2.5 border-b border-cyan-100">
+                        <span class="text-xl">💎</span> رزق معنوی (حدیث/نکته)
+                    </div>
+                    <div class="p-5 text-sm leading-8 text-slate-700 bg-cyan-50/20 italic">"${escapeHtml(String(result.ammo || '—'))}"</div>
+                </div>
+                <div class="protocol-card border-rose-500">
+                    <div class="bg-rose-50 p-4 font-bold text-rose-800 text-sm flex items-center gap-2.5 border-b border-rose-100">
+                        <span class="text-xl">🎯</span> تقسیم سنگر (مسئولیت‌ها)
+                    </div>
+                    <div class="p-5 text-sm leading-8 text-slate-700 bg-white">${escapeHtml(String(result.targeting || '—'))}</div>
+                </div>
+            `;
+
+            if (aiOutput) aiOutput.innerHTML = html;
+            if (outputArea) {
+                outputArea.classList.remove('hidden');
+                outputArea.scrollIntoView({ behavior: 'smooth' });
+            }
+            
+            console.log("✅ [Generate Protocol] Success! Results displayed");
+            
+            const btnText = document.getElementById('btn-text');
+            const btnLoader = document.getElementById('btn-loader');
+            if (btnText) btnText.classList.remove('hidden');
+            if (btnLoader) btnLoader.classList.add('hidden');
         }
 
         async function analyzeProfile(index) {
-            // منتظر بمان تا fetch کامل شود
-            if (fetchPromptsPromise) {
-                await fetchPromptsPromise;
-            }
+            console.log("🔍 [Analyze Profile] Function called for profile index:", index);
             
-            // اطمینان از اینکه state به‌روز است (از localStorage بخوان)
-            const savedPrompts = JSON.parse(localStorage.getItem('prompts'));
-            if (savedPrompts) {
-                state.prompts = savedPrompts;
-            }
-            
-            const btn = document.getElementById(`analyze-btn-${index}`);
-            if (!btn) return showToast('دکمه یافت نشد');
-            const originalContent = btn.innerHTML;
-            const profile = state.profiles[index];
-
-            btn.disabled = true;
-            btn.innerHTML = `<div class="loader w-4 h-4 border-white border-b-transparent"></div> <span>در حال تفکر...</span>`;
-
             try {
+                // منتظر بمان تا fetch کامل شود
+                if (fetchPromptsPromise) {
+                    console.log("⏳ [Analyze Profile] Waiting for prompts to load...");
+                    await fetchPromptsPromise;
+                    console.log("✅ [Analyze Profile] Prompts loaded");
+                }
+                
+                // اطمینان از اینکه state به‌روز است (از localStorage بخوان)
+                const savedPrompts = JSON.parse(localStorage.getItem('prompts'));
+                if (savedPrompts) {
+                    state.prompts = savedPrompts;
+                    console.log("📝 [Analyze Profile] Prompts loaded from localStorage");
+                }
+                
+                const btn = document.getElementById(`analyze-btn-${index}`);
+                if (!btn) {
+                    console.error("❌ [Analyze Profile] Button not found");
+                    return showToast('دکمه یافت نشد');
+                }
+                const originalContent = btn.innerHTML;
+                const profile = state.profiles[index];
+                console.log("👤 [Analyze Profile] Profile:", profile.name);
+
+                btn.disabled = true;
+                btn.innerHTML = `<div class="loader w-4 h-4 border-white border-b-transparent"></div> <span>در حال تفکر...</span>`;
+
                 const userPrompt = `
                     Profile Data:
                     Name: ${profile.name}
@@ -739,13 +849,18 @@
                     Full Logs (Chronological): ${JSON.stringify(profile.logs)}
                 `;
 
+                console.log("🤖 [Analyze Profile] Calling AI...");
                 const rawText = await callGemini(userPrompt, state.prompts.profileAnalysis);
+                console.log("✅ [Analyze Profile] AI response received");
 
                 let result;
                 try {
                      let clean = String(rawText).replace(/```json\n?|```/g, '').trim();
                      result = JSON.parse(clean);
+                     console.log("✅ [Analyze Profile] JSON parsed successfully:", result);
                 } catch (e) {
+                    console.error("❌ [Analyze Profile] JSON parse error:", e);
+                    console.log("📄 [Analyze Profile] Raw text:", rawText);
                     result = { sentiment: "تحلیل متنی", advice: String(rawText) };
                 }
 
@@ -759,13 +874,18 @@
                 saveData();
                 renderProfiles(document.getElementById('app-container'));
                 showToast('تحلیل هوشمند در پرونده ثبت شد');
+                console.log("✅ [Analyze Profile] Success! Log added to profile");
 
             } catch (error) {
-                console.error(error);
+                console.error("❌ [Analyze Profile] Error:", error);
+                console.error("❌ [Analyze Profile] Error stack:", error.stack);
                 showToast('خطا در دریافت تحلیل.');
-            } finally {
-                btn.innerHTML = originalContent;
-                btn.disabled = false;
+                
+                const btn = document.getElementById(`analyze-btn-${index}`);
+                if (btn) {
+                    btn.innerHTML = originalContent;
+                    btn.disabled = false;
+                }
             }
         }
 
@@ -952,7 +1072,7 @@
                         <div class="pt-2 space-y-3">
                             <button onclick="refreshPrompts()" class="btn-press w-full bg-blue-500 text-white py-3.5 rounded-2xl font-bold hover:bg-blue-600 transition-colors shadow-lg shadow-blue-100 flex items-center justify-center gap-2">
                                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                                <span>به‌روزرسانی دستورالعمل‌ها از Google Sheet</span>
+                                <span>به‌روزرسانی دستورالعمل‌ها</span>
                             </button>
                             <button onclick="saveSettings()" class="btn-press w-full bg-primary text-white py-3.5 rounded-2xl font-bold hover:bg-primary-hover transition-colors shadow-lg shadow-cyan-100">ذخیره تغییرات</button>
                             <button onclick="closeModal()" class="btn-press w-full text-slate-400 py-2 text-sm font-bold hover:text-slate-600">انصراف</button>
@@ -968,13 +1088,26 @@
         }
 
         async function refreshPrompts() {
+            console.log("🔄 [Refresh Prompts] Manual refresh triggered by user");
             showToast('در حال به‌روزرسانی دستورالعمل‌ها...');
-            // fetch جدید انجام بده
-            fetchPromptsPromise = fetchPromptsFromUrl();
-            await fetchPromptsPromise;
-            // modal را به‌روزرسانی کن
-            openSettingsModal();
-            showToast('دستورالعمل‌ها با موفقیت به‌روزرسانی شدند');
+            
+            try {
+                // fetch جدید انجام بده
+                console.log("📊 [Refresh Prompts] Starting new fetch...");
+                fetchPromptsPromise = fetchPromptsFromUrl();
+                await fetchPromptsPromise;
+                console.log("✅ [Refresh Prompts] Fetch completed successfully");
+                
+                // modal را به‌روزرسانی کن
+                console.log("🔄 [Refresh Prompts] Refreshing settings modal...");
+                openSettingsModal();
+                
+                showToast('دستورالعمل‌ها با موفقیت به‌روزرسانی شدند');
+                console.log("✅ [Refresh Prompts] Process completed successfully");
+            } catch (error) {
+                console.error("❌ [Refresh Prompts] Error during refresh:", error);
+                showToast('خطا در به‌روزرسانی دستورالعمل‌ها');
+            }
         }
 
         function saveSettings() {
