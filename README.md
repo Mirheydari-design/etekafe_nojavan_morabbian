@@ -29,7 +29,7 @@ cp .env.example .env
 ```env
 API_KEY=morabbiyane_eetekafe_nojavan
 BASE_URL=https://selfclaude.flearning.ir/
-API_ENDPOINT=chat/completions
+API_ENDPOINT=v1/chat/completions
 ```
 
 ### مرحله 3: تولید فایل config.js
@@ -167,7 +167,7 @@ const responseText = data.choices?.[0]?.message?.content ||
 ```env
 API_KEY=morabbiyane_eetekafe_nojavan
 BASE_URL=https://selfclaude.flearning.ir/
-API_ENDPOINT=chat/completions
+API_ENDPOINT=v1/chat/completions
 PORT=3000
 HOST=0.0.0.0
 ```
@@ -198,7 +198,7 @@ source ~/.bashrc
 ```dockerfile
 ENV API_KEY=morabbiyane_eetekafe_nojavan
 ENV BASE_URL=https://selfclaude.flearning.ir/
-ENV API_ENDPOINT=chat/completions
+ENV API_ENDPOINT=v1/chat/completions
 ENV PORT=3000
 ENV HOST=0.0.0.0
 ```

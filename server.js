@@ -20,7 +20,7 @@ const HOST = process.env.HOST || 'localhost';
 // خواندن متغیرهای محیطی
 const apiKey = process.env.API_KEY || '';
 const baseUrl = process.env.BASE_URL || 'https://selfclaude.flearning.ir/';
-const apiEndpoint = process.env.API_ENDPOINT || 'chat/completions';
+const apiEndpoint = process.env.API_ENDPOINT || 'v1/chat/completions';
 
 // تولید محتوای config.js از متغیرهای محیطی
 const configContent = `// فایل تنظیمات API - به صورت خودکار از متغیرهای محیطی تولید شده

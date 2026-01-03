@@ -16,7 +16,7 @@ cp env.example .env
 ```env
 API_KEY=morabbiyane_eetekafe_nojavan
 BASE_URL=https://selfclaude.flearning.ir/
-API_ENDPOINT=chat/completions
+API_ENDPOINT=v1/chat/completions
 ```
 
 ### 4. راه‌اندازی سرور

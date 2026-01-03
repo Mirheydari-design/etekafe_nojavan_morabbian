@@ -110,7 +110,7 @@
 
     <!-- General Modal (Click outside to close) -->
     <div id="modal-overlay" onclick="if(event.target === this) closeModal()" class="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-50 hidden flex items-center justify-center transition-all duration-300 px-4 pb-4 sm:pb-0">
-        <div id="modal-card" class="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl transform scale-95 opacity-0 transition-all duration-300 max-h-[85vh] flex flex-col relative overflow-hidden">
+        <div id="modal-card" class="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl transform scale-95 opacity-0 transition-all duration-300 h-[85vh] max-h-[85vh] flex flex-col relative overflow-hidden">
             <!-- Modal content -->
         </div>
     </div>
@@ -127,7 +127,7 @@
         const config = window.APP_CONFIG || {
             apiKey: "",
             baseUrl: "https://selfclaude.flearning.ir/",
-            apiEndpoint: "chat/completions",
+            apiEndpoint: "v1/chat/completions",
             promptsUrl: "https://opensheet.elk.sh/1yxTX1rxNpJ_HDDLxpgi4CmqIJ3S3uZgII9phrjUl_uY/Sheet1" // URL برای بارگذاری دستورالعمل‌ها از Google Sheet
         };
         
@@ -136,83 +136,194 @@
         const apiEndpoint = config.apiEndpoint;
 
         // --- SAFE API CALLER ---
+        // NOTE: منطق ساخت پرامپت‌ها (userPrompt) نباید دستکاری شود.
+        // فقط چارچوب ارسال پیام به API در این تابع مدیریت می‌شود.
         async function callGemini(userPrompt, systemInstruction) {
             console.log("🔵 [AI Request] Starting API call...");
+            log('info', 'AI Request', 'شروع درخواست به هوش مصنوعی', {
+                promptLength: userPrompt.length,
+                systemLength: systemInstruction.length
+            });
             console.log("📍 API Key configured:", !!apiKey);
             console.log("📍 Base URL:", baseUrl);
             console.log("📍 API Endpoint:", apiEndpoint);
             
             if (!apiKey) {
                 console.warn("⚠️ [AI Request] API key not configured - using dummy response");
+                log('warn', 'AI Request', 'API Key تنظیم نشده - استفاده از پاسخ تستی');
                 await new Promise(r => setTimeout(r, 600));
-                return JSON.stringify({
-                    diagnosis: "حالت تمرینی: عدم دسترسی به شبکه",
-                    action: "اتصال اینترنت یا کلید API را بررسی کنید.",
-                    ammo: "حدیث: انتظار فرج، افضل اعمال است.",
-                    targeting: "همه یاران را فراخوان کنید.",
-                    sentiment: "نامشخص",
-                    advice: "سیستم آفلاین است."
+                // پاسخ تستی به فرمت JSON که برنامه انتظار دارد
+                const dummyResponse = JSON.stringify({
+                    sections: [
+                        { title: "⚠️ حالت تمرینی", content: "لطفاً API Key را در فایل config.js تنظیم کنید." },
+                        { title: "گام بعدی", content: "بعد از تنظیم API Key، دوباره «رزق معنوی» را بزنید." },
+                        { title: "یادآوری", content: "خروجی واقعی باید JSON باشد و فقط به زبان فارسی." }
+                    ],
+                    sentiment: "تست",
+                    advice: "این یک پاسخ تستی است. API Key را در config.js قرار دهید"
                 });
+                log('info', 'AI Request', 'پاسخ تستی برگردانده شد', { 
+                    note: 'برای استفاده واقعی باید API Key تنظیم شود',
+                    response: dummyResponse.substring(0, 150) + '...'
+                });
+                return dummyResponse;
             }
 
-            // ساخت URL کامل
-            const url = `${baseUrl}${apiEndpoint}`.replace(/\/+/g, '/').replace(/^https?:\//, 'https://');
-            console.log("🌐 [AI Request] Full URL:", url);
+            // ساخت URL کامل با API Key در query string (Chat Completions API)
+            const cleanBaseUrl = `${baseUrl}${apiEndpoint}`.replace(/\/+/g, '/').replace(/^https?:\//, 'https://');
+            const url = `${cleanBaseUrl}?key=${apiKey}`;
+            console.log("🌐 [AI Request] Full URL:", cleanBaseUrl + '?key=***' + apiKey.slice(-4));
+            log('info', 'AI Request', 'URL درخواست (Chat Completions)', { 
+                url: cleanBaseUrl,
+                apiKeyLast4: apiKey.slice(-4)
+            });
             
-            // فرمت درخواست برای API جدید (مشابه Claude/ChatGPT)
+            // فرمت درخواست برای Chat Completions API
+            // نکته: هیچ متن اضافه‌ای اینجا به systemInstruction چسبانده نمی‌شود.
+            // «قواعد زبان/خروجی» باید دقیقاً داخل System Instruction (از Google Sheet) باشد.
             const payload = {
+                model: "gemini-2.5-flash",
                 messages: [
-                    { role: "system", content: systemInstruction },
+                    {
+                        role: "system",
+                        content: `${systemInstruction}`
+                    },
                     { role: "user", content: userPrompt }
                 ]
             };
-            console.log("📦 [AI Request] Payload:", JSON.stringify(payload).substring(0, 200) + "...");
+            console.log("📦 [AI Request] Payload (Chat Completions):", JSON.stringify(payload).substring(0, 200) + "...");
+            log('info', 'AI Request', 'ارسال پیام به AI', {
+                format: 'Chat Completions API',
+                model: payload.model,
+                userPromptLength: userPrompt.length,
+                systemPromptLength: systemInstruction.length
+            });
 
             const delays = [1000, 2000, 4000];
             for (let i = 0; i <= delays.length; i++) {
                 try {
                     console.log(`🔄 [AI Request] Attempt ${i + 1}/${delays.length + 1}`);
+                    log('info', 'AI Request', `تلاش ${i + 1} از ${delays.length + 1} برای اتصال`);
+                    
+                    const headers = { 
+                        'Content-Type': 'application/json'
+                        // این API از API key در URL query string استفاده می‌کند
+                    };
+                    
+                    console.log("📨 [AI Request] Headers:", headers);
+                    log('info', 'AI Request', 'Headers درخواست', {
+                        hasContentType: !!headers['Content-Type'],
+                        note: 'API key در URL query string است (format: ?key=API_KEY)'
+                    });
+                    
+                    const bodyString = JSON.stringify(payload);
+                    console.log("📤 [AI Request] Body size:", bodyString.length, "characters");
+                    log('info', 'AI Request', 'ارسال درخواست', {
+                        bodySize: bodyString.length,
+                        bodyPreview: bodyString.substring(0, 300) + '...'
+                    });
                     
                     const response = await fetch(url, {
                         method: 'POST',
-                        headers: { 
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${apiKey}`
-                            // اگر بک‌اند از header دیگری استفاده می‌کند، اینجا تغییر دهید
-                            // مثلاً: 'api-key': apiKey یا 'X-API-Key': apiKey
-                        },
-                        body: JSON.stringify(payload)
+                        headers: headers,
+                        body: bodyString
                     });
                     
                     console.log("📡 [AI Response] Status:", response.status, response.statusText);
+                    log('info', 'AI Response', `وضعیت پاسخ: ${response.status}`, { 
+                        status: response.status,
+                        statusText: response.statusText
+                    });
                     
                     if (!response.ok) {
                         const errorText = await response.text();
                         console.error('❌ [AI Response] API Error:', response.status, errorText);
+                        log('error', 'AI Response', `خطای API: ${response.status}`, { 
+                            status: response.status,
+                            errorText: errorText.substring(0, 500)
+                        });
                         throw new Error(`HTTP Error: ${response.status} - ${errorText}`);
                     }
                     
                     const data = await response.json();
                     console.log("📥 [AI Response] Data received:", JSON.stringify(data).substring(0, 300) + "...");
+                    log('info', 'AI Response', 'داده JSON دریافت شد', {
+                        dataPreview: JSON.stringify(data).substring(0, 200) + '...',
+                        hasChoices: !!data.choices,
+                        choicesCount: data.choices?.length,
+                        hasError: !!data.error
+                    });
                     
-                    // تلاش برای خواندن پاسخ در فرمت‌های مختلف
-                    const responseText = data.choices?.[0]?.message?.content || 
-                                       data.content || 
-                                       data.response || 
-                                       data.message || 
-                                       data.text ||
-                                       (data.choices && data.choices[0]?.text) ||
-                                       JSON.stringify(data);
+                    // بررسی خطا
+                    if (data.error) {
+                        console.error("❌ [AI Response] API Error:", data.error);
+                        log('error', 'AI Response', 'خطای API', {
+                            errorMessage: data.error.message || JSON.stringify(data.error),
+                            errorCode: data.error.code,
+                            errorType: data.error.type
+                        });
+                        throw new Error(data.error.message || JSON.stringify(data.error));
+                    }
+                    
+                    // استخراج پاسخ از فرمت Chat Completions
+                    let responseText = null;
+                    
+                    // Chat Completions: data.choices[0].message.content
+                    if (data.choices && data.choices[0]?.message?.content) {
+                        responseText = data.choices[0].message.content;
+                        console.log("✅ [AI Response] Extracted from chat.completions format");
+                        log('success', 'AI Response', 'پاسخ از فرمت chat.completions استخراج شد', {
+                            finishReason: data.choices[0].finish_reason,
+                            model: data.model,
+                            usage: data.usage
+                        });
+                    }
+                    // فرمت جایگزین: choices[0].text
+                    else if (data.choices && data.choices[0]?.text) {
+                        responseText = data.choices[0].text;
+                        console.log("✅ [AI Response] Extracted from completions format");
+                        log('success', 'AI Response', 'پاسخ از فرمت Completions استخراج شد');
+                    }
+                    // فرمت‌های دیگر
+                    else if (data.content) {
+                        responseText = data.content;
+                    }
+                    else if (data.text) {
+                        responseText = data.text;
+                    }
+                    else {
+                        console.warn("⚠️ [AI Response] Unknown format, using JSON string");
+                        log('warn', 'AI Response', 'فرمت ناشناخته - استفاده از JSON string', {
+                            dataKeys: Object.keys(data),
+                            fullData: JSON.stringify(data).substring(0, 500)
+                        });
+                        responseText = JSON.stringify(data);
+                    }
                     
                     console.log("✅ [AI Response] Extracted text:", responseText.substring(0, 200) + "...");
+                    log('success', 'AI Response', 'پاسخ نهایی استخراج شد', {
+                        responsePreview: responseText.substring(0, 200) + '...',
+                        responseLength: responseText.length
+                    });
                     return responseText;
                 } catch (error) {
                     console.error(`❌ [AI Request] Attempt ${i + 1} failed:`, error);
+                    log('error', 'AI Request', `تلاش ${i + 1} شکست خورد`, {
+                        error: error.message,
+                        errorName: error.name,
+                        stack: error.stack?.substring(0, 300)
+                    });
+                    
                     if (i === delays.length) {
                         console.error("❌ [AI Request] All attempts failed. Final error:", error);
+                        log('error', 'AI Request', 'تمام تلاش‌ها شکست خوردند', { 
+                            finalError: error.message,
+                            totalAttempts: delays.length + 1
+                        });
                         throw error;
                     }
                     console.log(`⏳ [AI Request] Waiting ${delays[i]}ms before retry...`);
+                    log('info', 'AI Request', `انتظار ${delays[i]}ms قبل از تلاش مجدد`);
                     await new Promise(r => setTimeout(r, delays[i]));
                 }
             }
@@ -221,8 +332,18 @@
         // --- DEFAULT DATA ---
         const DEFAULT_PROMPTS = {
             mentorProtocol: `شما "دستیار هوشمند خادمان اعتکاف" هستید. ادبیات شما باید بسیار صمیمی، جهادی و معنوی باشد.
-خروجی شما باید دقیقاً یک JSON معتبر با فیلدهای diagnosis, action, ammo, targeting باشد.
-فقط JSON برگردان، بدون Markdown.`,
+خروجی شما باید دقیقاً یک JSON معتبر باشد با ساختار زیر:
+{
+  "sections": [
+    { "title": "تیتر کوتاه و متناسب", "content": "متن کامل و کاربردی" }
+  ]
+}
+قوانین:
+- تعداد sections بین 3 تا 6 باشد (کمتر/بیشتر ممنوع).
+- title و content را کاملاً متناسب با دغدغه‌ی مربی انتخاب کن (تیترها ثابت نباشند).
+- content هر بخش واضح، اجرایی و فارسیِ روان باشد.
+- فقط JSON برگردان؛ بدون Markdown، بدون توضیح اضافه، بدون متن بیرون از JSON.
+`,
             profileAnalysis: `شما "مشاور تربیتی" در فضای اعتکاف هستید. لحن دلسوزانه و مربی‌گونه. خروجی JSON با فیلدهای sentiment و advice.
 فقط JSON برگردان، بدون Markdown.`
         };
@@ -254,40 +375,161 @@
         ];
 
         // --- STATE ---
+        // نکته مهم:
+        // - «اینستراکشن‌ها باید از Google Sheet بیایند».
+        // - برای جلوگیری از گیر کردن روی پرامپت‌های قدیمیِ ذخیره‌شده در localStorage,
+        //   فقط زمانی از cache استفاده می‌کنیم که با متادیتای معتبر (منبع: Sheet) ذخیره شده باشد.
+        const PROMPTS_SCHEMA_VERSION = 2;
+
+        function loadCachedSheetPrompts() {
+            try {
+                const metaRaw = localStorage.getItem('prompts_meta');
+                const promptsRaw = localStorage.getItem('prompts');
+                if (!metaRaw || !promptsRaw) return null;
+                const meta = JSON.parse(metaRaw);
+                if (meta?.source !== 'google_sheet') return null;
+                if (meta?.schemaVersion !== PROMPTS_SCHEMA_VERSION) return null;
+                const prompts = JSON.parse(promptsRaw);
+                if (!prompts?.mentorProtocol || !prompts?.profileAnalysis) return null;
+                return { prompts, meta };
+            } catch {
+                return null;
+            }
+        }
+
+        const cached = loadCachedSheetPrompts();
+
         let state = {
-            prompts: JSON.parse(localStorage.getItem('prompts')) || DEFAULT_PROMPTS,
+            prompts: cached?.prompts || DEFAULT_PROMPTS,
+            promptsLoaded: !!cached, // اگر cache معتبر داریم، اجازه استفاده می‌دهیم
             schedule: JSON.parse(localStorage.getItem('schedule')) || DEFAULT_SCHEDULE,
             profiles: JSON.parse(localStorage.getItem('profiles')) || DEFAULT_PROFILES
         };
         let confirmCallback = null;
+        
+        // --- LOGGING SYSTEM ---
+        let appLogs = [];
+        const MAX_LOGS = 500; // حداکثر تعداد لاگ‌ها
+        
+        function log(level, category, message, data = null) {
+            const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+            const logEntry = {
+                time: timestamp,
+                level: level, // info, warn, error, success
+                category: category, // AI Request, Google Sheet, Generate Protocol, etc.
+                message: message,
+                data: data
+            };
+            
+            appLogs.unshift(logEntry); // اضافه کردن به اول آرایه
+            if (appLogs.length > MAX_LOGS) {
+                appLogs.pop(); // حذف آخرین لاگ
+            }
+            
+            // لاگ در console هم
+            const emoji = {
+                'info': '🔵',
+                'warn': '⚠️',
+                'error': '❌',
+                'success': '✅'
+            }[level] || 'ℹ️';
+            
+            const consoleMsg = `${emoji} [${category}] ${message}`;
+            
+            if (level === 'error') {
+                console.error(consoleMsg, data || '');
+            } else if (level === 'warn') {
+                console.warn(consoleMsg, data || '');
+            } else {
+                console.log(consoleMsg, data || '');
+            }
+        }
+        
+        function clearLogs() {
+            if (appLogs.length === 0) {
+                showToast('لاگی برای پاک کردن وجود ندارد');
+                return;
+            }
+            appLogs = [];
+            log('info', 'System', 'لاگ‌ها پاک شدند');
+            // اگر صفحه لاگ باز است، آن را به‌روزرسانی کن
+            if (currentSettingsTab === 'logs') {
+                renderSettingsContent();
+            }
+            showToast('تمام لاگ‌ها پاک شدند');
+        }
+        
+        function exportLogs() {
+            const logsText = appLogs.map(log => 
+                `[${log.time}] ${log.level.toUpperCase()} | ${log.category} | ${log.message}${log.data ? '\n  Data: ' + JSON.stringify(log.data) : ''}`
+            ).join('\n\n');
+            
+            // کپی به clipboard
+            navigator.clipboard.writeText(logsText).then(() => {
+                showToast('لاگ‌ها کپی شدند');
+            }).catch(() => {
+                // fallback: دانلود فایل
+                const blob = new Blob([logsText], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `logs_${new Date().toISOString().split('T')[0]}.txt`;
+                a.click();
+                showToast('لاگ‌ها دانلود شدند');
+            });
+        }
 
         // --- FETCH PROMPTS FROM URL ---
         let fetchPromptsPromise = null; // Promise برای fetch
+
+        function markPromptsLoadedFromGoogleSheet(sourceUrl) {
+            state.promptsLoaded = true;
+            const meta = {
+                source: 'google_sheet',
+                schemaVersion: PROMPTS_SCHEMA_VERSION,
+                url: String(sourceUrl || ''),
+                fetchedAt: new Date().toISOString()
+            };
+            try {
+                localStorage.setItem('prompts_meta', JSON.stringify(meta));
+            } catch {
+                // ignore
+            }
+        }
         
         async function fetchPromptsFromUrl() {
             console.log("📊 [Google Sheet] Starting to fetch prompts from Google Sheet...");
+            log('info', 'Google Sheet', 'دریافت دستورالعمل‌ها از Google Sheet');
             
             const promptsUrl = config.promptsUrl;
             console.log("📍 [Google Sheet] Prompts URL:", promptsUrl);
             
             if (!promptsUrl) {
                 console.log('⚠️ [Google Sheet] No prompts URL configured, using defaults');
+                log('warn', 'Google Sheet', 'URL تنظیم نشده، از مقادیر پیش‌فرض استفاده می‌شود');
+                // طبق سیاست جدید: اینستراکشن باید از Sheet بیاید.
+                // اگر cache معتبر نداریم، اجازه استفاده نمی‌دهیم.
+                state.promptsLoaded = !!loadCachedSheetPrompts();
+                if (!state.promptsLoaded) {
+                    log('error', 'Google Sheet', 'بدون Google Sheet نمی‌توان ادامه داد (prompt آماده نیست)');
+                    showToast('خطا: دریافت دستورالعمل‌ها از Google Sheet انجام نشد');
+                }
                 return Promise.resolve();
             }
 
             try {
-                // اضافه کردن timestamp برای جلوگیری از cache
-                const urlWithCacheBuster = `${promptsUrl}?t=${Date.now()}`;
-                console.log("🌐 [Google Sheet] Full URL with cache buster:", urlWithCacheBuster);
+                // نکته مهم: بعضی سرویس‌ها (مثل opensheet.elk.sh) نسبت به query string حساس هستند
+                // و اگر پارامتر اضافه شود ممکن است 400 بدهند.
+                // بنابراین ابتدا بدون cache-buster درخواست می‌زنیم. کنترل cache را با گزینه cache انجام می‌دهیم.
+                const primaryUrl = promptsUrl;
+                console.log("🌐 [Google Sheet] Fetching prompts from:", primaryUrl);
                 console.log("🔄 [Google Sheet] Fetching data...");
-                
-                const response = await fetch(urlWithCacheBuster, {
-                    cache: 'no-cache',
-                    headers: {
-                        'Cache-Control': 'no-cache, no-store, must-revalidate',
-                        'Pragma': 'no-cache',
-                        'Expires': '0'
-                    }
+
+                const response = await fetch(primaryUrl, {
+                    // نکته: گذاشتن header های اضافی در درخواست cross-origin باعث preflight (OPTIONS) می‌شود.
+                    // بعضی سرویس‌ها (مثل opensheet.elk.sh) ممکن است preflight را پاسخ ندهند و نتیجه "Failed to fetch" شود.
+                    // برای جلوگیری از این مشکل فقط cache را کنترل می‌کنیم و header اضافه نمی‌فرستیم.
+                    cache: 'no-store'
                 });
                 
                 console.log("📡 [Google Sheet] Response status:", response.status, response.statusText);
@@ -299,11 +541,21 @@
                 const sheetData = await response.json();
                 console.log("📥 [Google Sheet] Data received. Array length:", sheetData.length);
                 console.log("📄 [Google Sheet] Full data:", JSON.stringify(sheetData, null, 2));
+                log('info', 'Google Sheet', 'داده دریافت شد', {
+                    arrayLength: sheetData.length,
+                    fullData: JSON.stringify(sheetData).substring(0, 500) + '...'
+                });
                 
                 // تبدیل <br> به خط جدید
                 const convertBrToNewline = (text) => {
                     if (!text) return '';
-                    return String(text).replace(/<br\s*\/?>/gi, '\n');
+                    let t = String(text).replace(/<br\s*\/?>/gi, '\n');
+                    // اگر سلول گوگل‌شیت به صورت quoted برگشته باشد (مثلاً: "....")، کوتیشن‌های داخلی معمولاً با "" escape می‌شوند.
+                    const trimmed = t.trim();
+                    if (trimmed.length >= 2 && trimmed.startsWith('"') && trimmed.endsWith('"')) {
+                        t = trimmed.slice(1, -1).replace(/""/g, '"');
+                    }
+                    return t;
                 };
                 
                 // OpenSheet یک آرایه از اشیاء برمی‌گرداند
@@ -314,10 +566,31 @@
                     // نمایش تمام type ها برای دیباگ
                     console.log("🔍 [Google Sheet] All row types:", sheetData.map((row, idx) => `Row ${idx}: "${row.type}"`).join(', '));
                     
-                    // پیدا کردن ردیف با type = "System Instruction" (case-insensitive)
-                    const systemInstructionRow = sheetData.find(row => 
+                    // روش 1: پیدا کردن ردیف با type = "System Instruction" (فرمت قدیم)
+                    let systemInstructionRow = sheetData.find(row => 
                         row.type && String(row.type).trim().toLowerCase() === 'system instruction'
                     );
+                    
+                    // روش 2: اگر نبود، از ردیف‌های جداگانه mentorProtocol و profileAnalysis استفاده کن (فرمت جدید)
+                    if (!systemInstructionRow) {
+                        console.log("🔍 [Google Sheet] Trying alternate format with separate rows");
+                        const mentorRow = sheetData.find(row => row.type === 'mentorProtocol');
+                        const profileRow = sheetData.find(row => row.type === 'profileAnalysis');
+                        
+                        if (mentorRow || profileRow) {
+                            // ساخت یک ردیف ترکیبی
+                            systemInstructionRow = {
+                                type: 'System Instruction (merged)',
+                                mentorProtocol: mentorRow ? (mentorRow['System Instruction'] || mentorRow.mentorProtocol) : null,
+                                profileAnalysis: profileRow ? (profileRow['System Instruction'] || profileRow.profileAnalysis) : null
+                            };
+                            console.log("✅ [Google Sheet] Created merged row from separate type rows");
+                            log('info', 'Google Sheet', 'فرمت جایگزین تشخیص داده شد - ترکیب ردیف‌ها', {
+                                mentorFound: !!mentorRow,
+                                profileFound: !!profileRow
+                            });
+                        }
+                    }
                     
                     if (systemInstructionRow) {
                         console.log("✅ [Google Sheet] Found 'System Instruction' row");
@@ -345,9 +618,12 @@
                         }
                         
                         if (updated) {
+                            // منبع نهایی اینستراکشن‌ها: Google Sheet
+                            markPromptsLoadedFromGoogleSheet(promptsUrl);
                             // ذخیره در localStorage
                             saveData();
                             console.log('✅ [Google Sheet] Prompts updated and saved to localStorage successfully!');
+                            log('success', 'Google Sheet', 'دستورالعمل‌ها با موفقیت به‌روزرسانی شدند');
                             // اگر modal تنظیمات باز است، آن را به‌روزرسانی کن
                             const modalCard = document.getElementById('modal-card');
                             if (modalCard && modalCard.innerHTML.includes('set-prompt-main')) {
@@ -382,6 +658,8 @@
                                 updated = true;
                             }
                             if (updated) {
+                                // منبع نهایی اینستراکشن‌ها: Google Sheet
+                                markPromptsLoadedFromGoogleSheet(promptsUrl);
                                 saveData();
                                 console.log('✅ [Google Sheet] Prompts updated from first row and saved to localStorage');
                                 // اگر modal تنظیمات باز است، آن را به‌روزرسانی کن
@@ -403,17 +681,34 @@
                 console.error('❌ [Google Sheet] Failed to fetch prompts from URL:', error);
                 console.error('❌ [Google Sheet] Error details:', error.message);
                 console.error('❌ [Google Sheet] Error stack:', error.stack);
-                console.warn('⚠️ [Google Sheet] Using default prompts instead');
+                const cachedFallback = loadCachedSheetPrompts();
+                if (cachedFallback) {
+                    state.prompts = cachedFallback.prompts;
+                    state.promptsLoaded = true;
+                    console.warn('⚠️ [Google Sheet] Fetch failed, using cached Sheet prompts');
+                    log('warn', 'Google Sheet', 'خطا در دریافت از Google Sheet - استفاده از نسخه cache شده', { error: error.message });
+                } else {
+                    state.promptsLoaded = false;
+                    console.warn('⚠️ [Google Sheet] Fetch failed and no cache available');
+                    log('error', 'Google Sheet', 'خطا در دریافت از Google Sheet', { error: error.message });
+                    showToast('خطا: دریافت دستورالعمل‌ها از Google Sheet انجام نشد');
+                }
             }
         }
 
         // بارگذاری دستورالعمل‌ها در هنگام لود صفحه
+        log('info', 'App Init', 'برنامه در حال راه‌اندازی است...');
         console.log("🚀 [App Init] Application starting - fetching prompts from Google Sheet...");
         fetchPromptsPromise = fetchPromptsFromUrl(); 
 
         function saveData() {
             console.log("💾 [Save Data] Saving data to localStorage...");
-            localStorage.setItem('prompts', JSON.stringify(state.prompts));
+            // پرامپت‌ها فقط وقتی ذخیره می‌شوند که از Google Sheet بارگذاری شده باشند.
+            // این کار جلوی ماندگار شدن پرامپت‌های قدیمی/پیش‌فرض را می‌گیرد.
+            const meta = localStorage.getItem('prompts_meta');
+            if (state.promptsLoaded && meta) {
+                localStorage.setItem('prompts', JSON.stringify(state.prompts));
+            }
             localStorage.setItem('schedule', JSON.stringify(state.schedule));
             localStorage.setItem('profiles', JSON.stringify(state.profiles));
             console.log("✅ [Save Data] Data saved successfully");
@@ -562,10 +857,15 @@
                 html += `
                     <div class="bg-white p-2.5 pl-4 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-3 transition-all hover:border-cyan-100">
                         <div class="relative min-w-[75px] text-center">
-                            <span class="text-primary font-black text-lg font-[Vazirmatn] tracking-tight">${toPersianDigits(item.time)}</span>
-                            <input type="time" value="${item.time}" 
-                                onchange="updateSchedule(${index}, 'time', this.value)"
-                                class="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10">
+                            <input 
+                                type="text"
+                                value="${item.time}"
+                                inputmode="numeric"
+                                placeholder="00:00"
+                                onblur="updateSchedule(${index}, 'time', normalizeTimeInput(this.value))"
+                                class="w-full text-center bg-transparent text-primary font-black text-lg tracking-tight outline-none focus:outline-none"
+                                aria-label="زمان برنامه (HH:MM)"
+                            />
                         </div>
                         
                         <div class="flex-grow">
@@ -585,6 +885,7 @@
 
             html += `</div></div>`;
             container.innerHTML = html;
+            autoResizeAllTextareas(container);
         }
 
         function renderProfiles(container) {
@@ -662,7 +963,7 @@
                                             <textarea 
                                                 onchange="updateLog(${idx}, ${logIdx}, 'note', this.value)"
                                                 oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"
-                                                class="w-full text-sm leading-7 ${isAi ? 'bg-amber-50 border-amber-100 text-amber-900' : 'bg-slate-50 border-slate-100 text-slate-600'} p-3.5 rounded-2xl rounded-tr-sm border shadow-sm focus:bg-white focus:ring-1 focus:ring-cyan-200 focus:text-slate-800 transition-all resize-none overflow-hidden placeholder-slate-300 min-h-[56px] focus:outline-none"
+                                                class="w-full text-sm leading-7 ${isAi ? 'bg-amber-50 border-amber-100 text-amber-900' : 'bg-slate-50 border-slate-100 text-slate-600'} p-3.5 rounded-2xl rounded-tr-sm border shadow-sm focus:bg-white focus:ring-1 focus:ring-cyan-200 focus:text-slate-800 transition-all resize-none overflow-hidden placeholder-slate-300 min-h-[56px] focus:outline-none auto-resize-textarea whitespace-pre-wrap break-words overflow-hidden"
                                                 >${log.note.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea>
                                         </div>
                                     `}).join('')}
@@ -690,12 +991,37 @@
 
             html += `</div></div>`;
             container.innerHTML = html;
+            autoResizeAllTextareas(container);
         }
 
-        // --- CORE LOGIC ---
+        
+        function autoResizeAllTextareas(scope=document) {
+            try {
+                const els = scope.querySelectorAll('textarea.auto-resize-textarea');
+                els.forEach(el => {
+                    el.style.height = '';
+                    el.style.height = (el.scrollHeight) + 'px';
+                });
+            } catch {}
+        }
+// --- CORE LOGIC ---
+        // ساخت پرامپت: لطفاً این فرمت را دست نزنید (طبق نسخه قدیمی)
+        function buildMentorUserPrompt(timeNow, currentEventTitle, mentorInput, studentsArr) {
+            return `جزئیات User Prompt:\nTime: ${timeNow}\nCurrent Event: ${currentEventTitle}\nUser (Mentor) Input: ${mentorInput}\nStudents: ${JSON.stringify(studentsArr)}`;
+        }
+
         async function generateProtocol() {
+            log('info', 'Generate Protocol', 'درخواست دریافت رزق معنوی');
             console.log("🚀 [Generate Protocol] Function called");
-            
+
+            const btnText = document.getElementById('btn-text');
+            const btnLoader = document.getElementById('btn-loader');
+            const outputArea = document.getElementById('result-area');
+            const aiOutput = document.getElementById('ai-output');
+
+            // نتیجه باید در کل scope تابع در دسترس باشد
+            let result = null;
+
             try {
                 // منتظر بمان تا fetch کامل شود
                 if (fetchPromptsPromise) {
@@ -703,27 +1029,20 @@
                     await fetchPromptsPromise;
                     console.log("✅ [Generate Protocol] Prompts loaded");
                 }
-                
-                // اطمینان از اینکه state به‌روز است (از localStorage بخوان)
-                const savedPrompts = JSON.parse(localStorage.getItem('prompts'));
-                if (savedPrompts) {
-                    state.prompts = savedPrompts;
-                    console.log("📝 [Generate Protocol] Prompts loaded from localStorage");
+
+                if (!state.promptsLoaded) {
+                    showToast('دستورالعمل‌ها از Google Sheet بارگذاری نشده‌اند');
+                    throw new Error('PromptsNotLoaded');
                 }
-                
+
                 const inputEl = document.getElementById('mentor-input');
                 const input = inputEl ? inputEl.value : '';
                 console.log("📝 [Generate Protocol] User input:", input);
-                
+
                 if (!input.trim()) {
                     console.log("⚠️ [Generate Protocol] Empty input - showing toast");
                     return showToast('لطفا ابتدا دغدغه خود را بنویسید');
                 }
-
-                const btnText = document.getElementById('btn-text');
-                const btnLoader = document.getElementById('btn-loader');
-                const outputArea = document.getElementById('result-area');
-                const aiOutput = document.getElementById('ai-output');
 
                 console.log("🔄 [Generate Protocol] Updating UI - showing loader");
                 if (btnText) btnText.classList.add('hidden');
@@ -732,89 +1051,103 @@
 
                 const timeNow = getCurrentTime();
                 const currentEvent = getCurrentEvent();
-                const safeProfiles = state.profiles.map(p => ({ name: p.name, age: p.age, recent_log: (p.logs && p.logs.length) ? p.logs[p.logs.length-1]?.note : "بدون ثبت" }));
+                const currentEventTitle = currentEvent ? currentEvent.title : 'Free Time';
 
-                console.log("📋 [Generate Protocol] Context:", { time: timeNow, event: currentEvent?.title, profiles: safeProfiles.length });
+                const safeProfiles = state.profiles.map(p => ({
+                    name: p.name,
+                    age: p.age,
+                    recent_log: (p.logs && p.logs.length) ? (p.logs[p.logs.length - 1]?.note || "بدون ثبت") : "بدون ثبت"
+                }));
 
-                const userPrompt = `
-                    Current Context:
-                    - Time: ${timeNow}
-                    - Current Event: ${currentEvent ? currentEvent.title : 'Free Time'}
-                    - User (Mentor) Input: "${input}"
-                    - Students: ${JSON.stringify(safeProfiles)}
-                `;
+                console.log("📋 [Generate Protocol] Context:", { time: timeNow, event: currentEventTitle, profiles: safeProfiles.length });
+
+                // IMPORTANT: فرمت پرامپت مطابق نسخه قدیمی
+                const userPrompt = buildMentorUserPrompt(timeNow, currentEventTitle, input, safeProfiles);
 
                 console.log("🤖 [Generate Protocol] Calling AI...");
+                log('info', 'Generate Protocol', 'فراخوانی هوش مصنوعی', {
+                    userPromptPreview: userPrompt.substring(0, 150) + '...',
+                    systemPromptPreview: state.prompts.mentorProtocol.substring(0, 150) + '...'
+                });
+
                 const rawText = await callGemini(userPrompt, state.prompts.mentorProtocol);
                 console.log("✅ [Generate Protocol] AI response received");
+                log('info', 'Generate Protocol', 'پاسخ AI دریافت شد', {
+                    rawTextPreview: String(rawText).substring(0, 300) + '...',
+                    rawTextLength: String(rawText).length
+                });
 
-                let result;
                 try {
-                    let clean = String(rawText).replace(/```json\n?|```/g, '').trim();
+                    const clean = String(rawText).replace(/```json\n?|```/g, '').trim();
                     result = typeof clean === 'string' ? JSON.parse(clean) : clean;
                     console.log("✅ [Generate Protocol] JSON parsed successfully:", result);
+                    log('success', 'Generate Protocol', 'JSON با موفقیت پارس شد', {
+                        hasSections: Array.isArray(result?.sections),
+                        sectionsCount: Array.isArray(result?.sections) ? result.sections.length : null
+                    });
                 } catch (e) {
                     console.error("❌ [Generate Protocol] JSON parse error:", e);
                     console.log("📄 [Generate Protocol] Raw text:", rawText);
-                    result = { diagnosis: "خطا در فرمت خروجی", action: String(rawText), ammo: "...", targeting: "..." };
+                    log('error', 'Generate Protocol', 'خطا در پارس JSON', {
+                        error: e.message,
+                        rawText: String(rawText).substring(0, 500)
+                    });
+                    result = { sections: [ { title: "خطا در فرمت خروجی", content: String(rawText) } ] };
                 }
+
+                // --- Render ---
+                console.log("🎨 [Generate Protocol] Rendering results...");
+
+                const sections = normalizeProtocolSections(result);
+
+                // اگر مدل خروجیِ درست نداد، یک کارت خطا نمایش بده
+                const safeSections = (sections && sections.length) ? sections : [
+                    { title: "خطا", content: "خروجی قابل نمایش نبود. لطفاً دوباره تلاش کنید." }
+                ];
+
+                const html = safeSections.map((sec, idx) => {
+                    const st = PROTOCOL_SECTION_STYLES[idx % PROTOCOL_SECTION_STYLES.length];
+                    const title = escapeHtml(sec.title);
+                    const content = escapeHtml(sec.content);
+
+                    return `
+                        <div class="protocol-card ${st.border}">
+                            <div class="${st.headBg} p-4 font-bold ${st.headText} text-sm flex items-center gap-2.5 border-b ${st.headBorder}">
+                                <span class="text-xl">${st.icon}</span> ${title}
+                            </div>
+                            <div class="p-5 text-sm leading-8 text-slate-700 bg-white">${content}</div>
+                        </div>
+                    `;
+                }).join('\n');
+
+                if (aiOutput) aiOutput.innerHTML = html;
+                if (outputArea) {
+                    outputArea.classList.remove('hidden');
+                    outputArea.scrollIntoView({ behavior: 'smooth' });
+                }
+
+                console.log("✅ [Generate Protocol] Success! Results displayed");
+                log('success', 'Generate Protocol', 'رزق معنوی با موفقیت دریافت شد');
+
             } catch (error) {
                 console.error("❌ [Generate Protocol] Fatal error:", error);
                 console.error("❌ [Generate Protocol] Error stack:", error.stack);
+                log('error', 'Generate Protocol', 'خطا در دریافت رزق معنوی', { error: error.message });
                 showToast('خطا در ارتباط با خادم هوشمند.');
-                
-                const btnText = document.getElementById('btn-text');
-                const btnLoader = document.getElementById('btn-loader');
+            } finally {
+                // مهم: در هر حالت لودینگ جمع شود
                 if (btnText) btnText.classList.remove('hidden');
                 if (btnLoader) btnLoader.classList.add('hidden');
-                return;
             }
-
-            console.log("🎨 [Generate Protocol] Rendering results...");
-            const html = `
-                <div class="protocol-card border-amber-500">
-                    <div class="bg-amber-50 p-4 font-bold text-amber-800 text-sm flex items-center gap-2.5 border-b border-amber-100">
-                        <span class="text-xl">🩺</span> تشخیص و ریشه‌یابی
-                    </div>
-                    <div class="p-5 text-sm leading-8 text-slate-700 bg-white">${escapeHtml(String(result.diagnosis || '—'))}</div>
-                </div>
-                <div class="protocol-card border-emerald-500">
-                    <div class="bg-emerald-50 p-4 font-bold text-emerald-800 text-sm flex items-center gap-2.5 border-b border-emerald-100">
-                        <span class="text-xl">⚡</span> اقدام جهادی فوری
-                    </div>
-                    <div class="p-5 text-sm leading-8 text-slate-700 bg-white">${escapeHtml(String(result.action || '—'))}</div>
-                </div>
-                <div class="protocol-card border-cyan-500">
-                    <div class="bg-cyan-50 p-4 font-bold text-cyan-800 text-sm flex items-center gap-2.5 border-b border-cyan-100">
-                        <span class="text-xl">💎</span> رزق معنوی (حدیث/نکته)
-                    </div>
-                    <div class="p-5 text-sm leading-8 text-slate-700 bg-cyan-50/20 italic">"${escapeHtml(String(result.ammo || '—'))}"</div>
-                </div>
-                <div class="protocol-card border-rose-500">
-                    <div class="bg-rose-50 p-4 font-bold text-rose-800 text-sm flex items-center gap-2.5 border-b border-rose-100">
-                        <span class="text-xl">🎯</span> تقسیم سنگر (مسئولیت‌ها)
-                    </div>
-                    <div class="p-5 text-sm leading-8 text-slate-700 bg-white">${escapeHtml(String(result.targeting || '—'))}</div>
-                </div>
-            `;
-
-            if (aiOutput) aiOutput.innerHTML = html;
-            if (outputArea) {
-                outputArea.classList.remove('hidden');
-                outputArea.scrollIntoView({ behavior: 'smooth' });
-            }
-            
-            console.log("✅ [Generate Protocol] Success! Results displayed");
-            
-            const btnText = document.getElementById('btn-text');
-            const btnLoader = document.getElementById('btn-loader');
-            if (btnText) btnText.classList.remove('hidden');
-            if (btnLoader) btnLoader.classList.add('hidden');
         }
 
         async function analyzeProfile(index) {
             console.log("🔍 [Analyze Profile] Function called for profile index:", index);
-            
+            log('info', 'Analyze Profile', `تحلیل پرونده شماره ${index + 1}`);
+
+            const btn = document.getElementById(`analyze-btn-${index}`);
+            const originalContent = btn ? btn.innerHTML : null;
+
             try {
                 // منتظر بمان تا fetch کامل شود
                 if (fetchPromptsPromise) {
@@ -822,20 +1155,15 @@
                     await fetchPromptsPromise;
                     console.log("✅ [Analyze Profile] Prompts loaded");
                 }
-                
-                // اطمینان از اینکه state به‌روز است (از localStorage بخوان)
-                const savedPrompts = JSON.parse(localStorage.getItem('prompts'));
-                if (savedPrompts) {
-                    state.prompts = savedPrompts;
-                    console.log("📝 [Analyze Profile] Prompts loaded from localStorage");
+                if (!state.promptsLoaded) {
+                    showToast('دستورالعمل‌ها از Google Sheet بارگذاری نشده‌اند');
+                    throw new Error('PromptsNotLoaded');
                 }
                 
-                const btn = document.getElementById(`analyze-btn-${index}`);
                 if (!btn) {
                     console.error("❌ [Analyze Profile] Button not found");
                     return showToast('دکمه یافت نشد');
                 }
-                const originalContent = btn.innerHTML;
                 const profile = state.profiles[index];
                 console.log("👤 [Analyze Profile] Profile:", profile.name);
 
@@ -875,21 +1203,57 @@
                 renderProfiles(document.getElementById('app-container'));
                 showToast('تحلیل هوشمند در پرونده ثبت شد');
                 console.log("✅ [Analyze Profile] Success! Log added to profile");
+                log('success', 'Analyze Profile', 'تحلیل پرونده با موفقیت ثبت شد');
 
             } catch (error) {
                 console.error("❌ [Analyze Profile] Error:", error);
                 console.error("❌ [Analyze Profile] Error stack:", error.stack);
+                log('error', 'Analyze Profile', 'خطا در تحلیل پرونده', { error: error.message });
                 showToast('خطا در دریافت تحلیل.');
-                
-                const btn = document.getElementById(`analyze-btn-${index}`);
-                if (btn) {
+            } finally {
+                // دکمه در هر حالت به وضعیت اولیه برگردد
+                if (btn && originalContent !== null) {
                     btn.innerHTML = originalContent;
                     btn.disabled = false;
                 }
             }
         }
 
-        // --- CRUD ---
+        
+        function normalizeTimeInput(v) {
+            // Normalize user-typed time into HH:MM. Keeps UI unchanged, only fixes value.
+            let s = String(v || '').trim();
+            if (!s) return '00:00';
+            // Convert Persian digits to English
+            const map = { '۰':'0','۱':'1','۲':'2','۳':'3','۴':'4','۵':'5','۶':'6','۷':'7','۸':'8','۹':'9' };
+            s = s.replace(/[۰-۹]/g, ch => map[ch] || ch);
+
+            // If user typed 4 digits like 930 -> 09:30 or 1230 -> 12:30
+            const digits = s.replace(/[^0-9]/g, '');
+            if (digits.length === 3) {
+                s = '0' + digits[0] + ':' + digits.slice(1);
+            } else if (digits.length === 4) {
+                s = digits.slice(0,2) + ':' + digits.slice(2);
+            } else if (/^\d{1,2}:\d{1,2}$/.test(s)) {
+                // keep
+            } else if (digits.length >= 1 && digits.length <= 2) {
+                // hour only
+                s = digits.padStart(2,'0') + ':00';
+            } else {
+                // fallback
+                s = '00:00';
+            }
+
+            const parts = s.split(':');
+            let hh = parseInt(parts[0] || '0', 10);
+            let mm = parseInt(parts[1] || '0', 10);
+            if (Number.isNaN(hh)) hh = 0;
+            if (Number.isNaN(mm)) mm = 0;
+            hh = Math.max(0, Math.min(23, hh));
+            mm = Math.max(0, Math.min(59, mm));
+            return String(hh).padStart(2,'0') + ':' + String(mm).padStart(2,'0');
+        }
+// --- CRUD ---
         function updateSchedule(index, field, value) {
             state.schedule[index][field] = value;
             if (field === 'time') {
@@ -963,6 +1327,224 @@
         }
 
         // --- SETTINGS & MODALS ---
+        let currentSettingsTab = 'prompts'; // prompts, logs, about
+        
+        function switchSettingsTab(tab) {
+            currentSettingsTab = tab;
+            renderSettingsContent();
+        }
+        
+        function renderSettingsContent() {
+            const container = document.getElementById('settings-tab-content');
+            if (!container) return;
+            
+            // Update tab buttons
+            document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+                btn.classList.remove('border-b-2', 'border-primary', 'text-primary');
+                btn.classList.add('text-slate-400');
+            });
+            const activeBtn = document.getElementById(`tab-btn-${currentSettingsTab}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('text-slate-400');
+                activeBtn.classList.add('border-b-2', 'border-primary', 'text-primary');
+            }
+            
+            if (currentSettingsTab === 'prompts') {
+                container.innerHTML = renderPromptsTab();
+            } else if (currentSettingsTab === 'logs') {
+                container.innerHTML = renderLogsTab();
+            } else if (currentSettingsTab === 'about') {
+                container.innerHTML = renderAboutTab();
+            }
+        }
+        
+        function renderPromptsTab() {
+            return `
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-2 flex items-center gap-1.5">
+                            <span class="text-lg">⚡</span> دستورالعمل اتاق فکر (Protocol Prompt)
+                        </label>
+                        <textarea id="set-prompt-main" readonly class="w-full text-xs p-4 border border-slate-200 rounded-2xl bg-slate-50 focus:border-primary focus:bg-white focus:outline-none font-mono leading-relaxed shadow-inner text-slate-600 cursor-not-allowed" rows="6">${escapeHtml(state.prompts.mentorProtocol || '')}</textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-2 flex items-center gap-1.5">
+                            <span class="text-lg">🧠</span> دستورالعمل تحلیل پرونده (System Prompt)
+                        </label>
+                        <textarea id="set-prompt-profile" readonly class="w-full text-xs p-4 border border-slate-200 rounded-2xl bg-slate-50 focus:border-primary focus:bg-white focus:outline-none font-mono leading-relaxed shadow-inner text-slate-600 cursor-not-allowed" rows="6">${escapeHtml(state.prompts.profileAnalysis || '')}</textarea>
+                    </div>
+                    
+                    <div class="pt-2 space-y-3">
+                        <button onclick="refreshPrompts()" class="btn-press w-full bg-blue-500 text-white py-3.5 rounded-2xl font-bold hover:bg-blue-600 transition-colors shadow-lg shadow-blue-100 flex items-center justify-center gap-2">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            <span>به‌روزرسانی دستورالعمل‌ها</span>
+                        </button>
+                        <button onclick="saveSettings()" class="btn-press w-full bg-primary text-white py-3.5 rounded-2xl font-bold hover:bg-primary-hover transition-colors shadow-lg shadow-cyan-100">ذخیره تغییرات</button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function renderLogsTab() {
+            if (appLogs.length === 0) {
+                return `
+                    <div class="text-center py-16 text-slate-400">
+                        <div class="text-6xl mb-4 opacity-20">📋</div>
+                        <p class="text-sm">هنوز لاگی ثبت نشده است</p>
+                        <p class="text-xs mt-2">از قسمت اصلی برنامه استفاده کنید تا لاگ‌ها ثبت شوند</p>
+                    </div>
+                `;
+            }
+            
+            const logsHtml = appLogs.map(logEntry => {
+                const levelColors = {
+                    'info': 'bg-blue-50 border-blue-200 text-blue-700',
+                    'success': 'bg-green-50 border-green-200 text-green-700',
+                    'warn': 'bg-orange-50 border-orange-200 text-orange-700',
+                    'error': 'bg-red-50 border-red-200 text-red-700'
+                };
+                const levelEmojis = {
+                    'info': '🔵',
+                    'success': '✅',
+                    'warn': '⚠️',
+                    'error': '❌'
+                };
+                
+                const colorClass = levelColors[logEntry.level] || 'bg-slate-50 border-slate-200 text-slate-700';
+                const emoji = levelEmojis[logEntry.level] || 'ℹ️';
+                
+                return `
+                    <div class="border ${colorClass} rounded-2xl p-3 text-xs font-mono">
+                        <div class="flex items-center gap-2 mb-1 flex-wrap">
+                            <span class="text-base">${emoji}</span>
+                            <span class="font-bold text-[10px] opacity-60">${logEntry.time}</span>
+                            <span class="font-bold text-[10px] bg-white/50 px-2 py-0.5 rounded">${logEntry.category}</span>
+                            <span class="font-bold text-[10px] uppercase opacity-40">${logEntry.level}</span>
+                        </div>
+                        <div class="mr-6 leading-relaxed">${escapeHtml(logEntry.message)}</div>
+                        ${logEntry.data ? `<div class="mr-6 mt-2 text-[10px] bg-white/50 p-2 rounded overflow-auto max-h-32 whitespace-pre-wrap">${escapeHtml(JSON.stringify(logEntry.data, null, 2))}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+            
+            return `
+                <div class="space-y-3">
+                    <div class="flex gap-2 mb-4">
+                        <button onclick="refreshLogsView()" class="btn-press flex-1 bg-cyan-500 text-white py-2.5 rounded-xl text-xs font-bold hover:bg-cyan-600 transition-colors flex items-center justify-center gap-2">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            <span>به‌روزرسانی</span>
+                        </button>
+                        <button onclick="exportLogs()" class="btn-press flex-1 bg-slate-600 text-white py-2.5 rounded-xl text-xs font-bold hover:bg-slate-700 transition-colors flex items-center justify-center gap-2">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                            <span>کپی</span>
+                        </button>
+                        <button onclick="clearLogs()" class="btn-press flex-1 bg-rose-500 text-white py-2.5 rounded-xl text-xs font-bold hover:bg-rose-600 transition-colors flex items-center justify-center gap-2">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            <span>پاک</span>
+                        </button>
+                    </div>
+                    <div class="text-xs text-slate-500 mb-3 px-2 flex justify-between items-center">
+                        <span><span class="font-bold">${toPersianDigits(appLogs.length)}</span> لاگ ثبت شده</span>
+                        <span class="text-[10px]">جدیدترین در بالا</span>
+                    </div>
+                    <div id="logs-scroll-container" class="space-y-2 max-h-[500px] overflow-y-auto custom-scrollbar">
+                        ${logsHtml}
+                    </div>
+                </div>
+            `;
+        }
+        
+        function refreshLogsView() {
+            if (currentSettingsTab === 'logs') {
+                renderSettingsContent();
+                showToast('لاگ‌ها به‌روزرسانی شدند');
+            }
+        }
+        
+        function renderAboutTab() {
+            return `
+                <div class="space-y-4">
+                    <a href="https://taavonafarin.ir/etekaf/darsname" target="_blank" class="block group">
+                        <div class="bg-gradient-to-br from-rose-50 to-white border border-rose-100 rounded-3xl p-4 shadow-sm group-hover:shadow-md transition-all group-active:scale-95">
+                            <div class="flex items-center gap-4">
+                                <div class="bg-rose-100 p-3 rounded-2xl text-rose-600 group-hover:bg-rose-600 group-hover:text-white transition-colors">
+                                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-slate-800 text-sm group-hover:text-rose-700 transition-colors">درسنامه جامع مربیان</h4>
+                                    <p class="text-[10px] text-slate-500 mt-1">مطالعه سند تعاملی اصول تربیتی اعتکاف</p>
+                                </div>
+                                <div class="mr-auto text-rose-300 group-hover:text-rose-500">
+                                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 19l-7-7 7-7"/></svg>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                    <div class="mt-3">
+                        <div class="bg-slate-50/60 border border-slate-100 rounded-3xl p-3 space-y-3">
+                            <div class="text-[11px] font-bold text-slate-500 px-1">پیوندهای تکمیلی</div>
+                            <a href="https://taavonafarin.ir" target="_blank" class="block group">
+                        <div class="bg-gradient-to-br from-blue-50 to-white border border-blue-100 rounded-3xl p-4 shadow-sm group-hover:shadow-md transition-all group-active:scale-95">
+                            <div class="flex items-center gap-4">
+                                <div class="bg-blue-100 p-3 rounded-2xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors relative">
+                                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                    <span class="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white"></span>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-slate-800 text-sm group-hover:text-blue-700 transition-colors">معرفی تفکر تعاون آفرینی</h4>
+                                    <p class="text-[10px] text-slate-500 mt-1">وبسایت گروه تفکر تعاون آفرین</p>
+                                </div>
+                                <div class="mr-auto text-blue-300 group-hover:text-blue-500">
+                                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 19l-7-7 7-7"/></svg>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                    <a href="https://eitaa.com/taavonafarin" target="_blank" class="block group">
+                        <div class="bg-gradient-to-br from-orange-50 to-white border border-orange-100 rounded-3xl p-4 shadow-sm group-hover:shadow-md transition-all group-active:scale-95">
+                            <div class="flex items-center gap-4">
+                                <div class="bg-orange-100 p-3 rounded-2xl text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-slate-800 text-sm group-hover:text-orange-700 transition-colors">گروه تفکر تعاون آفرین در ایتا</h4>
+                                    <p class="text-[10px] text-slate-500 mt-1">با عضویت در گروه، همیشه به روز بمانید</p>
+                                </div>
+                                <div class="mr-auto text-orange-300 group-hover:text-orange-500">
+                                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 19l-7-7 7-7"/></svg>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                    <a href="https://eitaa.com/yoosof_e_zahra" target="_blank" class="block group">
+                        <div class="bg-gradient-to-br from-purple-50 to-white border border-purple-100 rounded-3xl p-4 shadow-sm group-hover:shadow-md transition-all group-active:scale-95">
+                            <div class="flex items-center gap-4">
+                                <div class="bg-purple-100 p-3 rounded-2xl text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-slate-800 text-sm group-hover:text-purple-700 transition-colors">پیشنهادات و نظرات</h4>
+                                    <p class="text-[10px] text-slate-500 mt-1">بازخوردهای خود را به ما برسانید</p>
+                                </div>
+                                <div class="mr-auto text-purple-300 group-hover:text-purple-500">
+                                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 19l-7-7 7-7"/></svg>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                    <div class="pt-4 space-y-3">
+                        <button onclick="closeModal()" class="btn-press w-full text-slate-400 py-2 text-sm font-bold hover:text-slate-600">بستن</button>
+                        <div class="flex justify-center">
+                            <button onclick="resetFactory()" class="text-[10px] text-rose-300 hover:text-rose-500 transition-colors">بازنشانی به تنظیمات کارخانه</button>
+                        </div>
+                    </div>
+                
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
         async function openSettingsModal() {
             // اگر fetch در حال انجام است، منتظر بمان
             if (fetchPromptsPromise) {
@@ -975,112 +1557,42 @@
                 state.prompts = savedPrompts;
             }
             
+            currentSettingsTab = 'prompts'; // بازگشت به تب پیش‌فرض
+            
             const modalContent = `
-                <div class="h-full overflow-y-auto bg-white custom-scrollbar">
-                    <div class="p-5 pb-4 border-b border-slate-100 sticky top-0 bg-white/95 backdrop-blur-sm z-10">
-                        <h3 class="font-black text-xl text-slate-800">جعبه ابزار خادم</h3>
-                        <p class="text-xs text-slate-400 mt-1">تنظیمات هوش مصنوعی و دستورالعمل‌ها</p>
-                    </div>
-
-                    <div class="p-5 space-y-6">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-2 flex items-center gap-1.5">
-                                <span class="text-lg">⚡</span> دستورالعمل اتاق فکر (Protocol Prompt)
-                            </label>
-                            <textarea id="set-prompt-main" readonly class="w-full text-xs p-4 border border-slate-200 rounded-2xl bg-slate-50 focus:border-primary focus:bg-white focus:outline-none font-mono leading-relaxed shadow-inner text-slate-600 cursor-not-allowed" rows="6">${escapeHtml(state.prompts.mentorProtocol || '')}</textarea>
+                <div class="h-full flex flex-col bg-white">
+                    <!-- Header با تب‌ها -->
+                    <div class="border-b border-slate-100 bg-white/95 backdrop-blur-sm">
+                        <div class="p-5 pb-0">
+                            <h3 class="font-black text-xl text-slate-800">جعبه ابزار خادم</h3>
+                            <p class="text-xs text-slate-400 mt-1 mb-4">تنظیمات، لاگ‌ها و درباره</p>
                         </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-2 flex items-center gap-1.5">
-                                <span class="text-lg">🧠</span> دستورالعمل تحلیل پرونده (System Prompt)
-                            </label>
-                            <textarea id="set-prompt-profile" readonly class="w-full text-xs p-4 border border-slate-200 rounded-2xl bg-slate-50 focus:border-primary focus:bg-white focus:outline-none font-mono leading-relaxed shadow-inner text-slate-600 cursor-not-allowed" rows="6">${escapeHtml(state.prompts.profileAnalysis || '')}</textarea>
-                        </div>
-
-                         <!-- Educational Link Section -->
-                        <a href="darsname_etekaf/etekaf_darsname_simple.html" target="_blank" class="block group">
-                            <div class="bg-gradient-to-br from-rose-50 to-white border border-rose-100 rounded-3xl p-4 shadow-sm group-hover:shadow-md transition-all group-active:scale-95">
-                                <div class="flex items-center gap-4">
-                                    <div class="bg-rose-100 p-3 rounded-2xl text-rose-600 group-hover:bg-rose-600 group-hover:text-white transition-colors">
-                                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-                                    </div>
-                                    <div>
-                                        <h4 class="font-bold text-slate-800 text-sm group-hover:text-rose-700 transition-colors">درسنامه جامع مربیان</h4>
-                                        <p class="text-[10px] text-slate-500 mt-1">مطالعه سند تعاملی اصول تربیتی اعتکاف</p>
-                                    </div>
-                                    <div class="mr-auto text-rose-300 group-hover:text-rose-500">
-                                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 19l-7-7 7-7"/></svg>
-                                    </div>
-                                </div>
-                            </div>
-                        </a>
-
-                        <!-- تفکر تعاون آفرینی -->
-                        <a href="https://taavonafarin.ir" target="_blank" class="block group">
-                            <div class="bg-gradient-to-br from-blue-50 to-white border border-blue-100 rounded-3xl p-4 shadow-sm group-hover:shadow-md transition-all group-active:scale-95">
-                                <div class="flex items-center gap-4">
-                                    <div class="bg-blue-100 p-3 rounded-2xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors relative">
-                                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                                        <span class="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white"></span>
-                                    </div>
-                                    <div>
-                                        <h4 class="font-bold text-slate-800 text-sm group-hover:text-blue-700 transition-colors">معرفی تفکر تعاون آفرینی</h4>
-                                        <p class="text-[10px] text-slate-500 mt-1">وبسایت گروه تفکر تعاون آفرین</p>
-                                    </div>
-                                    <div class="mr-auto text-blue-300 group-hover:text-blue-500">
-                                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 19l-7-7 7-7"/></svg>
-                                    </div>
-                                </div>
-                            </div>
-                        </a>
-
-                        <!-- گروه تفکر تعاون آفرین در ایتا -->
-                        <a href="https://eitaa.com/taavonafarin" target="_blank" class="block group">
-                            <div class="bg-gradient-to-br from-orange-50 to-white border border-orange-100 rounded-3xl p-4 shadow-sm group-hover:shadow-md transition-all group-active:scale-95">
-                                <div class="flex items-center gap-4">
-                                    <div class="bg-orange-100 p-3 rounded-2xl text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors">
-                                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                                    </div>
-                                    <div>
-                                        <h4 class="font-bold text-slate-800 text-sm group-hover:text-orange-700 transition-colors">گروه تفکر تعاون آفرین در ایتا</h4>
-                                        <p class="text-[10px] text-slate-500 mt-1">با عضویت در گروه، همیشه به روز بمانید</p>
-                                    </div>
-                                    <div class="mr-auto text-orange-300 group-hover:text-orange-500">
-                                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 19l-7-7 7-7"/></svg>
-                                    </div>
-                                </div>
-                            </div>
-                        </a>
-
-                        <!-- پیشنهادات و نظرات -->
-                        <a href="https://eitaa.com/yoosof_e_zahra" target="_blank" class="block group">
-                            <div class="bg-gradient-to-br from-purple-50 to-white border border-purple-100 rounded-3xl p-4 shadow-sm group-hover:shadow-md transition-all group-active:scale-95">
-                                <div class="flex items-center gap-4">
-                                    <div class="bg-purple-100 p-3 rounded-2xl text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">
-                                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
-                                    </div>
-                                    <div>
-                                        <h4 class="font-bold text-slate-800 text-sm group-hover:text-purple-700 transition-colors">پیشنهادات و نظرات</h4>
-                                        <p class="text-[10px] text-slate-500 mt-1">بازخوردهای خود را به ما برسانید</p>
-                                    </div>
-                                    <div class="mr-auto text-purple-300 group-hover:text-purple-500">
-                                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 19l-7-7 7-7"/></svg>
-                                    </div>
-                                </div>
-                            </div>
-                        </a>
-                        
-                        <div class="pt-2 space-y-3">
-                            <button onclick="refreshPrompts()" class="btn-press w-full bg-blue-500 text-white py-3.5 rounded-2xl font-bold hover:bg-blue-600 transition-colors shadow-lg shadow-blue-100 flex items-center justify-center gap-2">
-                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                                <span>به‌روزرسانی دستورالعمل‌ها</span>
+                        <!-- تب‌ها -->
+                        <div class="flex gap-1 px-3">
+                            <button 
+                                id="tab-btn-prompts" 
+                                onclick="switchSettingsTab('prompts')" 
+                                class="settings-tab-btn btn-press flex-1 py-3 text-sm font-bold border-b-2 border-primary text-primary transition-colors">
+                                <span class="text-base mr-1">⚙️</span> تنظیمات
                             </button>
-                            <button onclick="saveSettings()" class="btn-press w-full bg-primary text-white py-3.5 rounded-2xl font-bold hover:bg-primary-hover transition-colors shadow-lg shadow-cyan-100">ذخیره تغییرات</button>
-                            <button onclick="closeModal()" class="btn-press w-full text-slate-400 py-2 text-sm font-bold hover:text-slate-600">انصراف</button>
-                            <div class="pt-2 flex justify-center">
-                                <button onclick="resetFactory()" class="text-[10px] text-rose-300 hover:text-rose-500 transition-colors">بازنشانی به تنظیمات کارخانه</button>
-                            </div>
+                            <button 
+                                id="tab-btn-logs" 
+                                onclick="switchSettingsTab('logs')" 
+                                class="settings-tab-btn btn-press flex-1 py-3 text-sm font-bold border-b-2 border-transparent text-slate-400 transition-colors">
+                                <span class="text-base mr-1">📋</span> لاگ‌ها
+                            </button>
+                            <button 
+                                id="tab-btn-about" 
+                                onclick="switchSettingsTab('about')" 
+                                class="settings-tab-btn btn-press flex-1 py-3 text-sm font-bold border-b-2 border-transparent text-slate-400 transition-colors">
+                                <span class="text-base mr-1">ℹ️</span> درباره
+                            </button>
                         </div>
-                        <div class="h-6"></div>
+                    </div>
+                    
+                    <!-- محتوای تب -->
+                    <div id="settings-tab-content" class="flex-1 overflow-y-auto custom-scrollbar p-5 pb-28">
+                        ${renderPromptsTab()}
                     </div>
                 </div>
             `;
@@ -1219,6 +1731,40 @@
                 .replace(/'/g, "&#039;");
         }
 
+        // نرمال‌سازی خروجی پروتکل به «sections» (برای پشتیبانی از فرمت قدیمی 4-فیلدی هم)
+        function normalizeProtocolSections(result) {
+            // فرمت جدید
+            if (result && Array.isArray(result.sections)) {
+                return result.sections
+                    .filter(x => x && (x.title || x.content))
+                    .map(x => ({
+                        title: String(x.title || '').trim(),
+                        content: String(x.content || '').trim()
+                    }))
+                    .filter(x => x.title && x.content);
+            }
+
+            // فرمت قدیمی (diagnosis/action/ammo/targeting)
+            const legacy = [];
+            if (result && (result.diagnosis || result.action || result.ammo || result.targeting)) {
+                if (result.diagnosis) legacy.push({ title: "تشخیص و ریشه‌یابی", content: String(result.diagnosis) });
+                if (result.action) legacy.push({ title: "اقدام جهادی فوری", content: String(result.action) });
+                if (result.ammo) legacy.push({ title: "رزق معنوی (حدیث/نکته)", content: String(result.ammo) });
+                if (result.targeting) legacy.push({ title: "تقسیم سنگر (مسئولیت‌ها)", content: String(result.targeting) });
+            }
+            return legacy;
+        }
+
+        // استایل‌های ثابت برای کارت‌ها (مدل رنگ نمی‌دهد)
+        const PROTOCOL_SECTION_STYLES = [
+            { border: "border-amber-500",   headBg: "bg-amber-50",   headText: "text-amber-800",   headBorder: "border-amber-100", icon: "🧭" },
+            { border: "border-emerald-500", headBg: "bg-emerald-50", headText: "text-emerald-800", headBorder: "border-emerald-100", icon: "⚡" },
+            { border: "border-cyan-500",    headBg: "bg-cyan-50",    headText: "text-cyan-800",    headBorder: "border-cyan-100", icon: "💎" },
+            { border: "border-rose-500",    headBg: "bg-rose-50",    headText: "text-rose-800",    headBorder: "border-rose-100", icon: "🎯" },
+            { border: "border-indigo-500",  headBg: "bg-indigo-50",  headText: "text-indigo-800",  headBorder: "border-indigo-100", icon: "🛡️" },
+            { border: "border-orange-500",  headBg: "bg-orange-50",  headText: "text-orange-800",  headBorder: "border-orange-100", icon: "🔥" }
+        ];
+
         function windowExpose() {
             Object.assign(window, {
                 router,
@@ -1238,12 +1784,17 @@
                 refreshPrompts,
                 closeModal,
                 resetFactory,
-                executeConfirm
+                executeConfirm,
+                switchSettingsTab,
+                clearLogs,
+                exportLogs,
+                refreshLogsView
             });
         }
 
         // Init
         windowExpose();
+        log('success', 'System', 'سیستم با موفقیت راه‌اندازی شد ✨');
         router('home');
 
     </script>

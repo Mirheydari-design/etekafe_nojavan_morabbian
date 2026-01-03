@@ -67,7 +67,7 @@ nano .env
 ```env
 API_KEY=morabbiyane_eetekafe_nojavan
 BASE_URL=https://selfclaude.flearning.ir/
-API_ENDPOINT=chat/completions
+API_ENDPOINT=v1/chat/completions
 PORT=3000
 HOST=0.0.0.0
 ```
@@ -163,7 +163,7 @@ curl http://localhost:3000/config.js
 # window.APP_CONFIG = {
 #     apiKey: "morabbiyane_eetekafe_nojavan",
 #     baseUrl: "https://selfclaude.flearning.ir/",
-#     apiEndpoint: "chat/completions"
+#     apiEndpoint: "v1/chat/completions"
 # };
 ```
 

@@ -15,7 +15,7 @@ require('dotenv').config();
 // خواندن متغیرهای محیطی
 const apiKey = process.env.API_KEY || '';
 const baseUrl = process.env.BASE_URL || 'https://selfclaude.flearning.ir/';
-const apiEndpoint = process.env.API_ENDPOINT || 'chat/completions';
+const apiEndpoint = process.env.API_ENDPOINT || 'v1/chat/completions';
 const promptsUrl = process.env.PROMPTS_URL || '';
 
 // محتوای فایل config.js

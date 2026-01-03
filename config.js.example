@@ -5,7 +5,7 @@
 window.APP_CONFIG = {
     apiKey: "morabbiyane_eetekafe_nojavan",
     baseUrl: "https://selfclaude.flearning.ir/",
-    apiEndpoint: "chat/completions", // endpoint API (ممکن است متفاوت باشد)
+    apiEndpoint: "v1/chat/completions", // endpoint API (ممکن است متفاوت باشد)
     promptsUrl: "https://opensheet.elk.sh/1yxTX1rxNpJ_HDDLxpgi4CmqIJ3S3uZgII9phrjUl_uY/Sheet1" // URL برای بارگذاری دستورالعمل‌های سیستم از Google Sheet
 };
 
