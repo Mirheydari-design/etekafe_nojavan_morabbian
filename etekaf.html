@@ -479,6 +479,10 @@
             });
         }
 
+        // --- VERSION ---
+        // شماره نسخه صرفاً برای نمایش در «درباره» (کوچک و کمرنگ)
+        const APP_VERSION = '1.0.6';
+
         // --- FETCH PROMPTS FROM URL ---
         let fetchPromptsPromise = null; // Promise برای fetch
 
@@ -1537,6 +1541,9 @@
                         <div class="flex justify-center">
                             <button onclick="resetFactory()" class="text-[10px] text-rose-300 hover:text-rose-500 transition-colors">بازنشانی به تنظیمات کارخانه</button>
                         </div>
+                        <div class="flex justify-center">
+                            <div class="text-[9px] text-slate-300">نسخه ${APP_VERSION}</div>
+                        </div>
                     </div>
                 
                         </div>
@@ -1565,7 +1572,7 @@
                     <div class="border-b border-slate-100 bg-white/95 backdrop-blur-sm">
                         <div class="p-5 pb-0">
                             <h3 class="font-black text-xl text-slate-800">جعبه ابزار خادم</h3>
-                            <p class="text-xs text-slate-400 mt-1 mb-4">تنظیمات، لاگ‌ها و درباره</p>
+                            <p class="text-xs text-slate-400 mt-1 mb-4">تنظیمات و درباره</p>
                         </div>
                         <!-- تب‌ها -->
                         <div class="flex gap-1 px-3">
@@ -1574,12 +1581,6 @@
                                 onclick="switchSettingsTab('prompts')" 
                                 class="settings-tab-btn btn-press flex-1 py-3 text-sm font-bold border-b-2 border-primary text-primary transition-colors">
                                 <span class="text-base mr-1">⚙️</span> تنظیمات
-                            </button>
-                            <button 
-                                id="tab-btn-logs" 
-                                onclick="switchSettingsTab('logs')" 
-                                class="settings-tab-btn btn-press flex-1 py-3 text-sm font-bold border-b-2 border-transparent text-slate-400 transition-colors">
-                                <span class="text-base mr-1">📋</span> لاگ‌ها
                             </button>
                             <button 
                                 id="tab-btn-about" 

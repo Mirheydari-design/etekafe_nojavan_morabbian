@@ -21,6 +21,9 @@ const HOST = process.env.HOST || 'localhost';
 const apiKey = process.env.API_KEY || '';
 const baseUrl = process.env.BASE_URL || 'https://selfclaude.flearning.ir/';
 const apiEndpoint = process.env.API_ENDPOINT || 'v1/chat/completions';
+// URL دریافت دستورالعمل‌ها از Google Sheet (اجباری)
+// اگر تنظیم نشود، از مقدار پیش‌فرض پروژه استفاده می‌شود.
+const promptsUrl = process.env.PROMPTS_URL || 'https://opensheet.elk.sh/1yxTX1rxNpJ_HDDLxpgi4CmqIJ3S3uZgII9phrjUl_uY/Sheet1';
 
 // تولید محتوای config.js از متغیرهای محیطی
 const configContent = `// فایل تنظیمات API - به صورت خودکار از متغیرهای محیطی تولید شده
@@ -29,7 +32,8 @@ const configContent = `// فایل تنظیمات API - به صورت خودکا
 window.APP_CONFIG = {
     apiKey: "${apiKey}",
     baseUrl: "${baseUrl}",
-    apiEndpoint: "${apiEndpoint}"
+    apiEndpoint: "${apiEndpoint}",
+    promptsUrl: "${promptsUrl}"
 };
 `;
 
@@ -108,6 +112,7 @@ server.listen(PORT, HOST, () => {
     console.log(`   🔑 API Key: ${apiKey ? '***' + apiKey.slice(-4) : '❌ تنظیم نشده'}`);
     console.log(`   🌐 Base URL: ${baseUrl}`);
     console.log(`   📍 Endpoint: ${apiEndpoint}`);
+    console.log(`   🧾 Prompts URL: ${promptsUrl}`);
     console.log('');
     console.log('💡 برای توقف سرور: Ctrl+C');
 });
